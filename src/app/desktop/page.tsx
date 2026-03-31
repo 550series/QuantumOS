@@ -19,7 +19,7 @@ import {
   LayoutGrid,
 } from 'lucide-react';
 
-type AppType = 'file-manager' | 'task-scheduler' | 'ai-center' | 'log-viewer' | 'alert-system';
+type AppType = 'file-manager' | 'task-scheduler' | 'ai-center' | 'log-viewer' | 'alert-system' | 'settings';
 
 const appConfig = {
   'file-manager': {
@@ -52,14 +52,52 @@ const appConfig = {
     component: AlertSystem,
     defaultSize: { width: 600, height: 400 },
   },
+  'settings': {
+    title: '系统设置',
+    icon: <Settings className="w-5 h-5" />,
+    component: () => (
+      <div className="p-4">
+        <h2 className="text-xl font-mono text-moss-cyan mb-4">系统设置</h2>
+        <div className="space-y-4">
+          <div className="p-3 border border-moss-cyan/30 rounded">
+            <h3 className="text-sm font-mono text-moss-white mb-2">外观设置</h3>
+            <div className="flex items-center gap-2">
+              <span className="text-xs text-moss-white/60">主题:</span>
+              <select className="bg-dark-900 border border-moss-cyan/30 text-moss-white text-xs px-2 py-1 rounded">
+                <option>深色主题</option>
+                <option>浅色主题</option>
+              </select>
+            </div>
+          </div>
+          <div className="p-3 border border-moss-cyan/30 rounded">
+            <h3 className="text-sm font-mono text-moss-white mb-2">系统设置</h3>
+            <div className="flex items-center gap-2">
+              <span className="text-xs text-moss-white/60">自动更新:</span>
+              <input type="checkbox" className="accent-moss-cyan" />
+            </div>
+          </div>
+          <div className="p-3 border border-moss-cyan/30 rounded">
+            <h3 className="text-sm font-mono text-moss-white mb-2">网络设置</h3>
+            <div className="flex items-center gap-2">
+              <span className="text-xs text-moss-white/60">网络连接:</span>
+              <span className="text-xs text-moss-green">已连接</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    ),
+    defaultSize: { width: 600, height: 500 },
+  },
 };
 
 export default function DesktopPage() {
-  const { setBootState, updateStatus, openWindow, closeWindow, focusWindow, windows, activeWindowId } =
+  const { setBootState, updateStatus, openWindow, closeWindow, focusWindow, minimizeWindow, maximizeWindow, updateWindowPosition, updateWindowSize, windows, activeWindowId, status } =
     useSystemStore();
   const [currentTime, setCurrentTime] = useState<Date | null>(null);
   const [startMenuOpen, setStartMenuOpen] = useState(false);
   const [mounted, setMounted] = useState(false);
+  const [dragging, setDragging] = useState<{ windowId: string; startX: number; startY: number; startPos: { x: number; y: number } } | null>(null);
+  const [resizing, setResizing] = useState<{ windowId: string; startX: number; startY: number; startSize: { width: number; height: number } } | null>(null);
 
   // 客户端挂载后初始化
   useEffect(() => {
@@ -116,6 +154,89 @@ export default function DesktopPage() {
     setStartMenuOpen(false);
   };
 
+  // 处理窗口拖动
+  const handleMouseDown = (windowId: string, e: React.MouseEvent) => {
+    e.stopPropagation();
+    const window = windows.find(w => w.id === windowId);
+    if (window) {
+      setDragging({
+        windowId,
+        startX: e.clientX,
+        startY: e.clientY,
+        startPos: { ...window.position }
+      });
+      focusWindow(windowId);
+    }
+  };
+
+  const handleMouseMove = (e: React.MouseEvent) => {
+    if (dragging) {
+      const deltaX = e.clientX - dragging.startX;
+      const deltaY = e.clientY - dragging.startY;
+      updateWindowPosition(dragging.windowId, {
+        x: dragging.startPos.x + deltaX,
+        y: dragging.startPos.y + deltaY
+      });
+    }
+  };
+
+  const handleMouseUp = () => {
+    setDragging(null);
+  };
+
+  // 处理窗口大小调整
+  const handleResizeStart = (windowId: string, e: React.MouseEvent) => {
+    e.stopPropagation();
+    const window = windows.find(w => w.id === windowId);
+    if (window) {
+      setResizing({
+        windowId,
+        startX: e.clientX,
+        startY: e.clientY,
+        startSize: { ...window.size }
+      });
+      focusWindow(windowId);
+    }
+  };
+
+  const handleResizeMove = (e: React.MouseEvent) => {
+    if (resizing) {
+      const deltaX = e.clientX - resizing.startX;
+      const deltaY = e.clientY - resizing.startY;
+      const newWidth = Math.max(300, resizing.startSize.width + deltaX);
+      const newHeight = Math.max(200, resizing.startSize.height + deltaY);
+      updateWindowSize(resizing.windowId, { width: newWidth, height: newHeight });
+    }
+  };
+
+  const handleResizeEnd = () => {
+    setResizing(null);
+  };
+
+  // 添加全局鼠标事件监听器
+  useEffect(() => {
+    if (dragging) {
+      document.addEventListener('mousemove', handleMouseMove);
+      document.addEventListener('mouseup', handleMouseUp);
+      return () => {
+        document.removeEventListener('mousemove', handleMouseMove);
+        document.removeEventListener('mouseup', handleMouseUp);
+      };
+    }
+  }, [dragging, updateWindowPosition, windows]);
+
+  // 添加调整大小的事件监听器
+  useEffect(() => {
+    if (resizing) {
+      document.addEventListener('mousemove', handleResizeMove);
+      document.addEventListener('mouseup', handleResizeEnd);
+      return () => {
+        document.removeEventListener('mousemove', handleResizeMove);
+        document.removeEventListener('mouseup', handleResizeEnd);
+      };
+    }
+  }, [resizing, updateWindowSize, windows]);
+
   return (
     <motion.div
       initial={{ opacity: 0 }}
@@ -165,6 +286,18 @@ export default function DesktopPage() {
             const AppComponent = config.component;
             const isActive = activeWindowId === window.id;
 
+            // 跳过最小化的窗口
+            if (window.isMinimized) return null;
+
+            // 计算最大化时的窗口大小
+            const windowStyle = {
+              left: window.isMaximized ? 0 : window.position.x,
+              top: window.isMaximized ? 0 : window.position.y,
+              width: window.isMaximized ? window.innerWidth : window.size.width,
+              height: window.isMaximized ? window.innerHeight - 56 : window.size.height,
+              zIndex: window.zIndex,
+            };
+
             return (
               <motion.div
                 key={window.id}
@@ -174,17 +307,14 @@ export default function DesktopPage() {
                 className={`absolute glass-panel ${
                   isActive ? 'ring-2 ring-moss-cyan shadow-neon-strong' : ''
                 }`}
-                style={{
-                  left: window.position.x,
-                  top: window.position.y,
-                  width: window.size.width,
-                  height: window.size.height,
-                  zIndex: window.zIndex,
-                }}
+                style={windowStyle}
                 onClick={() => focusWindow(window.id)}
               >
                 {/* 窗口标题栏 */}
-                <div className="flex items-center justify-between px-4 py-2 border-b border-moss-cyan/20 cursor-move">
+                <div 
+                  className="flex items-center justify-between px-4 py-2 border-b border-moss-cyan/20 cursor-move"
+                  onMouseDown={(e) => handleMouseDown(window.id, e)}
+                >
                   <div className="flex items-center gap-2">
                     <div className="text-moss-cyan">{config.icon}</div>
                     <span className="font-mono text-sm text-moss-white">
@@ -194,9 +324,15 @@ export default function DesktopPage() {
                   <div className="flex items-center gap-1">
                     <button
                       className="p-1 hover:bg-moss-cyan/10 rounded"
-                      onClick={() => focusWindow(window.id)}
+                      onClick={() => minimizeWindow(window.id)}
                     >
-                      <LayoutGrid className="w-3 h-3 text-moss-white/60" />
+                      <div className="w-3 h-0.5 bg-moss-white/60"></div>
+                    </button>
+                    <button
+                      className="p-1 hover:bg-moss-cyan/10 rounded"
+                      onClick={() => maximizeWindow(window.id)}
+                    >
+                      <div className="w-3 h-3 border border-moss-white/60"></div>
                     </button>
                     <button
                       className="p-1 hover:bg-cyber-red/10 rounded"
@@ -211,6 +347,16 @@ export default function DesktopPage() {
                 <div className="p-2 h-[calc(100%-40px)] overflow-auto">
                   <AppComponent />
                 </div>
+                
+                {/* 调整大小手柄 */}
+                <div 
+                  className="absolute bottom-0 right-0 w-4 h-4 bg-moss-cyan/30 cursor-se-resize"
+                  onMouseDown={(e) => handleResizeStart(window.id, e)}
+                />
+                <div 
+                  className="absolute bottom-0 right-0 w-2 h-2 bg-moss-cyan/60 rounded-full"
+                  onMouseDown={(e) => handleResizeStart(window.id, e)}
+                />
               </motion.div>
             );
           })}
@@ -280,6 +426,18 @@ export default function DesktopPage() {
 
           {/* 右侧：系统托盘 */}
           <div className="flex items-center gap-4">
+            {/* 系统状态监控 */}
+            <div className="flex items-center gap-3">
+              <div className="text-moss-white/60 font-mono text-xs">
+                CPU: {Math.round(status.cpu)}%
+              </div>
+              <div className="text-moss-white/60 font-mono text-xs">
+                MEM: {Math.round(status.memory.percentage)}%
+              </div>
+              <div className="text-moss-white/60 font-mono text-xs">
+                NET: {Math.round(status.network.download)}KB/s
+              </div>
+            </div>
             <div className="text-moss-white/60 font-mono text-xs" suppressHydrationWarning>
               {currentTime ? currentTime.toLocaleTimeString('zh-CN') : '--:--:--'}
             </div>
