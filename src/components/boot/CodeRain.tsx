@@ -709,6 +709,7 @@ export const CodeRain: React.FC = () => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [currentLine, setCurrentLine] = useState(0);
   const [displayedLines, setDisplayedLines] = useState<string[]>([]);
+  const [showCursor, setShowCursor] = useState(true);
 
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -727,17 +728,30 @@ export const CodeRain: React.FC = () => {
 
     // 加载代码行
     const loadCodeLine = () => {
-      const linesToAdd = 3; // 每次加载3行
-      for (let i = 0; i < linesToAdd; i++) {
-        if (currentLine + i < mossCodeSnippets.length) {
-          setDisplayedLines(prev => [...prev, mossCodeSnippets[currentLine + i]]);
-        }
+      if (currentLine < mossCodeSnippets.length) {
+        setDisplayedLines(prev => {
+          // 计算当前显示的行数是否超过画布高度
+          const fontSize = 14;
+          const lineHeight = fontSize + 4;
+          const maxLines = Math.floor((canvas.height - 40) / lineHeight);
+          
+          // 如果超过最大行数，移除最上面的一行
+          if (prev.length >= maxLines) {
+            return [...prev.slice(1), mossCodeSnippets[currentLine]];
+          }
+          return [...prev, mossCodeSnippets[currentLine]];
+        });
+        setCurrentLine(prev => prev + 1);
       }
-      setCurrentLine(prev => prev + linesToAdd);
     };
 
-    // 每80毫秒加载代码行，加快速度
-    const lineInterval = setInterval(loadCodeLine, 80);
+    // 每150毫秒加载代码行，逐行出现
+    const lineInterval = setInterval(loadCodeLine, 150);
+
+    // 光标闪烁效果
+    const cursorInterval = setInterval(() => {
+      setShowCursor(prev => !prev);
+    }, 500);
 
     const draw = () => {
       // 半透明背景，创建拖尾效果
@@ -763,6 +777,17 @@ export const CodeRain: React.FC = () => {
         ctx.fillStyle = gradient;
         ctx.fillText(line, x, y);
       });
+
+      // 绘制光标
+      if (showCursor && displayedLines.length > 0) {
+        const lastLine = displayedLines[displayedLines.length - 1];
+        const fontSize = 14;
+        const x = 20 + ctx.measureText(lastLine).width;
+        const y = 40 + (displayedLines.length - 1) * (fontSize + 4);
+        
+        ctx.fillStyle = 'rgba(100, 255, 218, 1)';
+        ctx.fillRect(x, y - fontSize + 2, 2, fontSize - 2);
+      }
 
       // 绘制矩阵风格的背景字符
       const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789!@#$%^&*()_+-=[]{}|;:,.<>?/\\~`'.split('');
@@ -795,9 +820,10 @@ export const CodeRain: React.FC = () => {
     return () => {
       clearInterval(drawInterval);
       clearInterval(lineInterval);
+      clearInterval(cursorInterval);
       window.removeEventListener('resize', resizeCanvas);
     };
-  }, [currentLine, displayedLines]);
+  }, [currentLine, displayedLines, showCursor]);
 
   return (
     <canvas
