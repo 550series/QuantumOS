@@ -756,7 +756,7 @@ export const CodeRain: React.FC = () => {
     }, 500);
 
     // 存储矩阵背景的状态，避免每次重绘
-    const matrixState = {
+    const matrixState: { chars: string[]; drops: number[]; fontSize: number } = {
       chars: 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789!@#$%^&*()_+-=[]{}|;:,.<>?/\\~`'.split(''),
       drops: [],
       fontSize: 14
