@@ -722,6 +722,8 @@ export const CodeRain: React.FC = () => {
     const resizeCanvas = () => {
       canvas.width = window.innerWidth * 0.5; // 左侧50%宽度，铺满左侧
       canvas.height = window.innerHeight;
+      // 重新初始化矩阵状态
+      initMatrixState();
     };
     resizeCanvas();
     window.addEventListener('resize', resizeCanvas);
@@ -753,9 +755,23 @@ export const CodeRain: React.FC = () => {
       setShowCursor(prev => !prev);
     }, 500);
 
+    // 存储矩阵背景的状态，避免每次重绘
+    const matrixState = {
+      chars: 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789!@#$%^&*()_+-=[]{}|;:,.<>?/\\~`'.split(''),
+      drops: [],
+      fontSize: 14
+    };
+
+    // 初始化矩阵状态
+    const initMatrixState = () => {
+      const columns = Math.floor(canvas.width / matrixState.fontSize);
+      matrixState.drops = Array(columns).fill(1).map(() => Math.floor(Math.random() * canvas.height / matrixState.fontSize));
+    };
+    initMatrixState();
+
     const draw = () => {
-      // 半透明背景，创建拖尾效果
-      ctx.fillStyle = 'rgba(10, 14, 23, 0.05)';
+      // 使用不透明背景，避免累积效果
+      ctx.fillStyle = 'rgba(10, 14, 23, 1)';
       ctx.fillRect(0, 0, canvas.width, canvas.height);
 
       // 设置字体和颜色
@@ -790,28 +806,31 @@ export const CodeRain: React.FC = () => {
       }
 
       // 绘制矩阵风格的背景字符
-      const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789!@#$%^&*()_+-=[]{}|;:,.<>?/\\~`'.split('');
-      const columns = Math.floor(canvas.width / fontSize);
-      const drops: number[] = Array(columns).fill(1);
+      const columns = Math.floor(canvas.width / matrixState.fontSize);
+      
+      // 确保drops数组长度正确
+      if (matrixState.drops.length !== columns) {
+        initMatrixState();
+      }
 
-      for (let i = 0; i < drops.length; i++) {
+      for (let i = 0; i < matrixState.drops.length; i++) {
         // 随机选择字符
-        const char = chars[Math.floor(Math.random() * chars.length)];
+        const char = matrixState.chars[Math.floor(Math.random() * matrixState.chars.length)];
 
         // 计算位置
-        const x = i * fontSize;
-        const y = drops[i] * fontSize;
+        const x = i * matrixState.fontSize;
+        const y = matrixState.drops[i] * matrixState.fontSize;
 
         // 淡色背景字符
         ctx.fillStyle = 'rgba(100, 255, 218, 0.1)';
         ctx.fillText(char, x, y);
 
         // 随机重置或继续下落
-        if (drops[i] * fontSize > canvas.height && Math.random() > 0.975) {
-          drops[i] = 0;
+        if (matrixState.drops[i] * matrixState.fontSize > canvas.height && Math.random() > 0.975) {
+          matrixState.drops[i] = 0;
         }
 
-        drops[i]++;
+        matrixState.drops[i]++;
       }
     };
 
