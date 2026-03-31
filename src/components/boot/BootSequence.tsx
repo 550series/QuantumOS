@@ -34,11 +34,11 @@ export const BootSequence: React.FC = () => {
     const timeline = [
       { time: 0, action: () => setStage('black') },
       { time: 1000, action: () => setStage('code_rain') },
-      { time: 4000, action: () => setStage('system_check') },
-      { time: 8000, action: () => setStage('moss_init') },
-      { time: 8500, action: () => setShowEye(true) },
-      { time: 12000, action: () => setStage('complete') },
-      { time: 14000, action: () => router.push('/desktop') },
+      { time: 20000, action: () => setStage('system_check') }, // 延长代码雨阶段到20秒
+      { time: 24000, action: () => setStage('moss_init') },
+      { time: 24500, action: () => setShowEye(true) },
+      { time: 28000, action: () => setStage('complete') },
+      { time: 30000, action: () => router.push('/desktop') },
     ];
 
     const timeouts = timeline.map(({ time, action }) =>
@@ -49,7 +49,7 @@ export const BootSequence: React.FC = () => {
     const progressInterval = setInterval(() => {
       setProgress((prev) => {
         if (prev >= 100) return 100;
-        return prev + 100 / 140; // 140次更新，总计14秒
+        return prev + 100 / 300; // 300次更新，总计30秒
       });
     }, 100);
 
