@@ -12,6 +12,10 @@ const nextConfig = {
     });
     return config;
   },
+  // EdgeOne 部署配置
+  trailingSlash: true,
+  basePath: '',
+  assetPrefix: '',
 };
 
 module.exports = nextConfig;
