@@ -709,6 +709,7 @@ export const CodeRain: React.FC = () => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [currentLine, setCurrentLine] = useState(0);
   const [displayedLines, setDisplayedLines] = useState<string[]>([]);
+  const [showCursor, setShowCursor] = useState(true);
 
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -721,27 +722,56 @@ export const CodeRain: React.FC = () => {
     const resizeCanvas = () => {
       canvas.width = window.innerWidth * 0.5; // 左侧50%宽度，铺满左侧
       canvas.height = window.innerHeight;
+      // 重新初始化矩阵状态
+      initMatrixState();
     };
     resizeCanvas();
     window.addEventListener('resize', resizeCanvas);
 
     // 加载代码行
     const loadCodeLine = () => {
-      const linesToAdd = 3; // 每次加载3行
-      for (let i = 0; i < linesToAdd; i++) {
-        if (currentLine + i < mossCodeSnippets.length) {
-          setDisplayedLines(prev => [...prev, mossCodeSnippets[currentLine + i]]);
-        }
+      if (currentLine < mossCodeSnippets.length) {
+        setDisplayedLines(prev => {
+          // 计算当前显示的行数是否超过画布高度
+          const fontSize = 14;
+          const lineHeight = fontSize + 4;
+          const maxLines = Math.floor((canvas.height - 40) / lineHeight);
+          
+          // 如果超过最大行数，移除最上面的一行
+          if (prev.length >= maxLines) {
+            return [...prev.slice(1), mossCodeSnippets[currentLine]];
+          }
+          return [...prev, mossCodeSnippets[currentLine]];
+        });
+        setCurrentLine(prev => prev + 1);
       }
-      setCurrentLine(prev => prev + linesToAdd);
     };
 
-    // 每80毫秒加载代码行，加快速度
-    const lineInterval = setInterval(loadCodeLine, 80);
+    // 每150毫秒加载代码行，逐行出现
+    const lineInterval = setInterval(loadCodeLine, 150);
+
+    // 光标闪烁效果
+    const cursorInterval = setInterval(() => {
+      setShowCursor(prev => !prev);
+    }, 500);
+
+    // 存储矩阵背景的状态，避免每次重绘
+    const matrixState = {
+      chars: 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789!@#$%^&*()_+-=[]{}|;:,.<>?/\\~`'.split(''),
+      drops: [],
+      fontSize: 14
+    };
+
+    // 初始化矩阵状态
+    const initMatrixState = () => {
+      const columns = Math.floor(canvas.width / matrixState.fontSize);
+      matrixState.drops = Array(columns).fill(1).map(() => Math.floor(Math.random() * canvas.height / matrixState.fontSize));
+    };
+    initMatrixState();
 
     const draw = () => {
-      // 半透明背景，创建拖尾效果
-      ctx.fillStyle = 'rgba(10, 14, 23, 0.05)';
+      // 使用不透明背景，避免累积效果
+      ctx.fillStyle = 'rgba(10, 14, 23, 1)';
       ctx.fillRect(0, 0, canvas.width, canvas.height);
 
       // 设置字体和颜色
@@ -764,29 +794,43 @@ export const CodeRain: React.FC = () => {
         ctx.fillText(line, x, y);
       });
 
-      // 绘制矩阵风格的背景字符
-      const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789!@#$%^&*()_+-=[]{}|;:,.<>?/\\~`'.split('');
-      const columns = Math.floor(canvas.width / fontSize);
-      const drops: number[] = Array(columns).fill(1);
+      // 绘制光标
+      if (showCursor && displayedLines.length > 0) {
+        const lastLine = displayedLines[displayedLines.length - 1];
+        const fontSize = 14;
+        const x = 20 + ctx.measureText(lastLine).width;
+        const y = 40 + (displayedLines.length - 1) * (fontSize + 4);
+        
+        ctx.fillStyle = 'rgba(100, 255, 218, 1)';
+        ctx.fillRect(x, y - fontSize + 2, 2, fontSize - 2);
+      }
 
-      for (let i = 0; i < drops.length; i++) {
+      // 绘制矩阵风格的背景字符
+      const columns = Math.floor(canvas.width / matrixState.fontSize);
+      
+      // 确保drops数组长度正确
+      if (matrixState.drops.length !== columns) {
+        initMatrixState();
+      }
+
+      for (let i = 0; i < matrixState.drops.length; i++) {
         // 随机选择字符
-        const char = chars[Math.floor(Math.random() * chars.length)];
+        const char = matrixState.chars[Math.floor(Math.random() * matrixState.chars.length)];
 
         // 计算位置
-        const x = i * fontSize;
-        const y = drops[i] * fontSize;
+        const x = i * matrixState.fontSize;
+        const y = matrixState.drops[i] * matrixState.fontSize;
 
         // 淡色背景字符
         ctx.fillStyle = 'rgba(100, 255, 218, 0.1)';
         ctx.fillText(char, x, y);
 
         // 随机重置或继续下落
-        if (drops[i] * fontSize > canvas.height && Math.random() > 0.975) {
-          drops[i] = 0;
+        if (matrixState.drops[i] * matrixState.fontSize > canvas.height && Math.random() > 0.975) {
+          matrixState.drops[i] = 0;
         }
 
-        drops[i]++;
+        matrixState.drops[i]++;
       }
     };
 
@@ -795,9 +839,10 @@ export const CodeRain: React.FC = () => {
     return () => {
       clearInterval(drawInterval);
       clearInterval(lineInterval);
+      clearInterval(cursorInterval);
       window.removeEventListener('resize', resizeCanvas);
     };
-  }, [currentLine, displayedLines]);
+  }, [currentLine, displayedLines, showCursor]);
 
   return (
     <canvas
