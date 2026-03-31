@@ -169,7 +169,7 @@ export default function DesktopPage() {
     }
   };
 
-  const handleMouseMove = (e: React.MouseEvent) => {
+  const handleMouseMove = (e: MouseEvent) => {
     if (dragging) {
       const deltaX = e.clientX - dragging.startX;
       const deltaY = e.clientY - dragging.startY;
@@ -199,7 +199,7 @@ export default function DesktopPage() {
     }
   };
 
-  const handleResizeMove = (e: React.MouseEvent) => {
+  const handleResizeMove = (e: MouseEvent) => {
     if (resizing) {
       const deltaX = e.clientX - resizing.startX;
       const deltaY = e.clientY - resizing.startY;
@@ -279,28 +279,28 @@ export default function DesktopPage() {
           </div>
 
           {/* 窗口区域 */}
-          {windows.map((window) => {
-            const config = appConfig[window.type as AppType];
+          {windows.map((win) => {
+            const config = appConfig[win.type as AppType];
             if (!config) return null;
 
             const AppComponent = config.component;
-            const isActive = activeWindowId === window.id;
+            const isActive = activeWindowId === win.id;
 
             // 跳过最小化的窗口
-            if (window.isMinimized) return null;
+            if (win.isMinimized) return null;
 
             // 计算最大化时的窗口大小
             const windowStyle = {
-              left: window.isMaximized ? 0 : window.position.x,
-              top: window.isMaximized ? 0 : window.position.y,
-              width: window.isMaximized ? window.innerWidth : window.size.width,
-              height: window.isMaximized ? window.innerHeight - 56 : window.size.height,
-              zIndex: window.zIndex,
+              left: win.isMaximized ? 0 : win.position.x,
+              top: win.isMaximized ? 0 : win.position.y,
+              width: win.isMaximized ? (typeof window !== 'undefined' ? window.innerWidth : 1000) : win.size.width,
+              height: win.isMaximized ? (typeof window !== 'undefined' ? window.innerHeight - 56 : 700) : win.size.height,
+              zIndex: win.zIndex,
             };
 
             return (
               <motion.div
-                key={window.id}
+                key={win.id}
                 initial={{ scale: 0.9, opacity: 0 }}
                 animate={{ scale: 1, opacity: 1 }}
                 exit={{ scale: 0.9, opacity: 0 }}
@@ -308,35 +308,35 @@ export default function DesktopPage() {
                   isActive ? 'ring-2 ring-moss-cyan shadow-neon-strong' : ''
                 }`}
                 style={windowStyle}
-                onClick={() => focusWindow(window.id)}
+                onClick={() => focusWindow(win.id)}
               >
                 {/* 窗口标题栏 */}
                 <div 
                   className="flex items-center justify-between px-4 py-2 border-b border-moss-cyan/20 cursor-move"
-                  onMouseDown={(e) => handleMouseDown(window.id, e)}
+                  onMouseDown={(e) => handleMouseDown(win.id, e)}
                 >
                   <div className="flex items-center gap-2">
                     <div className="text-moss-cyan">{config.icon}</div>
                     <span className="font-mono text-sm text-moss-white">
-                      {window.title}
+                      {win.title}
                     </span>
                   </div>
                   <div className="flex items-center gap-1">
                     <button
                       className="p-1 hover:bg-moss-cyan/10 rounded"
-                      onClick={() => minimizeWindow(window.id)}
+                      onClick={() => minimizeWindow(win.id)}
                     >
                       <div className="w-3 h-0.5 bg-moss-white/60"></div>
                     </button>
                     <button
                       className="p-1 hover:bg-moss-cyan/10 rounded"
-                      onClick={() => maximizeWindow(window.id)}
+                      onClick={() => maximizeWindow(win.id)}
                     >
                       <div className="w-3 h-3 border border-moss-white/60"></div>
                     </button>
                     <button
                       className="p-1 hover:bg-cyber-red/10 rounded"
-                      onClick={() => closeWindow(window.id)}
+                      onClick={() => closeWindow(win.id)}
                     >
                       <span className="text-cyber-red text-xs">×</span>
                     </button>
@@ -351,11 +351,11 @@ export default function DesktopPage() {
                 {/* 调整大小手柄 */}
                 <div 
                   className="absolute bottom-0 right-0 w-4 h-4 bg-moss-cyan/30 cursor-se-resize"
-                  onMouseDown={(e) => handleResizeStart(window.id, e)}
+                  onMouseDown={(e) => handleResizeStart(win.id, e)}
                 />
                 <div 
                   className="absolute bottom-0 right-0 w-2 h-2 bg-moss-cyan/60 rounded-full"
-                  onMouseDown={(e) => handleResizeStart(window.id, e)}
+                  onMouseDown={(e) => handleResizeStart(win.id, e)}
                 />
               </motion.div>
             );
