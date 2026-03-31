@@ -5,6 +5,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { useRouter } from 'next/navigation';
 import { CodeRain } from './CodeRain';
 import { MossEye } from './MossEye';
+import { SystemStatus } from './SystemStatus';
 
 type BootStage = 'black' | 'code_rain' | 'system_check' | 'moss_init' | 'complete';
 
@@ -94,7 +95,12 @@ export const BootSequence: React.FC = () => {
 
       {/* 阶段2: 代码雨 */}
       <AnimatePresence>
-        {stage === 'code_rain' && <CodeRain />}
+        {stage === 'code_rain' && (
+          <>
+            <CodeRain />
+            <SystemStatus />
+          </>
+        )}
       </AnimatePresence>
 
       {/* 阶段3: 系统检测 */}
