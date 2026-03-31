@@ -21,8 +21,8 @@ export const CodeRain: React.FC = () => {
     resizeCanvas();
     window.addEventListener('resize', resizeCanvas);
 
-    // MOSS风格的字符集
-    const chars = 'MOSS量子计算人工智能地球联合政府UEG'.split('');
+    // 代码雨字符集 - 编程相关字符
+    const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789!@#$%^&*()_+-=[]{}|;:,.<>?/\\~`'.split('');
     const fontSize = 14;
     const columns = Math.floor(canvas.width / fontSize);
 
