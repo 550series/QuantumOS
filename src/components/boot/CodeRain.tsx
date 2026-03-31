@@ -710,8 +710,15 @@ export const CodeRain: React.FC = () => {
   const [currentLine, setCurrentLine] = useState(0);
   const [displayedLines, setDisplayedLines] = useState<string[]>([]);
   const [showCursor, setShowCursor] = useState(true);
+  const [mounted, setMounted] = useState(false);
 
   useEffect(() => {
+    setMounted(true);
+  }, []);
+
+  useEffect(() => {
+    if (!mounted) return;
+    
     const canvas = canvasRef.current;
     if (!canvas) return;
 
@@ -842,7 +849,7 @@ export const CodeRain: React.FC = () => {
       clearInterval(cursorInterval);
       window.removeEventListener('resize', resizeCanvas);
     };
-  }, [currentLine, displayedLines, showCursor]);
+  }, [currentLine, displayedLines, showCursor, mounted]);
 
   return (
     <canvas

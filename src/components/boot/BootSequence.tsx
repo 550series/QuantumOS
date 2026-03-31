@@ -1,11 +1,16 @@
 'use client';
 
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, Suspense } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useRouter } from 'next/navigation';
+import dynamic from 'next/dynamic';
 import { CodeRain } from './CodeRain';
-import { MossEye } from './MossEye';
 import { SystemStatus } from './SystemStatus';
+
+const MossEye = dynamic(() => import('./MossEye').then(mod => ({ default: mod.MossEye })), { 
+  ssr: false,
+  loading: () => <div className="w-64 h-64" />
+});
 
 type BootStage = 'black' | 'code_rain' | 'system_check' | 'moss_init' | 'complete';
 
@@ -159,7 +164,9 @@ export const BootSequence: React.FC = () => {
                     transition={{ duration: 1, ease: 'easeOut' }}
                     className="absolute right-12 top-1/2 -translate-y-1/2"
                   >
-                    <MossEye />
+                    <Suspense fallback={<div className="w-64 h-64" />}>
+                      <MossEye />
+                    </Suspense>
                   </motion.div>
                 )}
               </AnimatePresence>

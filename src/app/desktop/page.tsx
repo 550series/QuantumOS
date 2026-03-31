@@ -293,8 +293,8 @@ export default function DesktopPage() {
             const windowStyle = {
               left: win.isMaximized ? 0 : win.position.x,
               top: win.isMaximized ? 0 : win.position.y,
-              width: win.isMaximized ? (typeof window !== 'undefined' ? window.innerWidth : 1000) : win.size.width,
-              height: win.isMaximized ? (typeof window !== 'undefined' ? window.innerHeight - 56 : 700) : win.size.height,
+              width: win.isMaximized && mounted ? window.innerWidth : win.size.width,
+              height: win.isMaximized && mounted ? window.innerHeight - 56 : win.size.height,
               zIndex: win.zIndex,
             };
 
