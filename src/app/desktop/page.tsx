@@ -57,11 +57,14 @@ const appConfig = {
 export default function DesktopPage() {
   const { setBootState, updateStatus, openWindow, closeWindow, focusWindow, windows, activeWindowId } =
     useSystemStore();
-  const [currentTime, setCurrentTime] = useState(new Date());
+  const [currentTime, setCurrentTime] = useState<Date | null>(null);
   const [startMenuOpen, setStartMenuOpen] = useState(false);
+  const [mounted, setMounted] = useState(false);
 
-  // 初始化
+  // 客户端挂载后初始化
   useEffect(() => {
+    setMounted(true);
+    setCurrentTime(new Date());
     setBootState(false, 100, 'complete');
 
     // 更新系统状态
@@ -277,11 +280,11 @@ export default function DesktopPage() {
 
           {/* 右侧：系统托盘 */}
           <div className="flex items-center gap-4">
-            <div className="text-moss-white/60 font-mono text-xs">
-              {currentTime.toLocaleTimeString('zh-CN')}
+            <div className="text-moss-white/60 font-mono text-xs" suppressHydrationWarning>
+              {currentTime ? currentTime.toLocaleTimeString('zh-CN') : '--:--:--'}
             </div>
-            <div className="text-moss-white/40 font-mono text-xs">
-              {currentTime.toLocaleDateString('zh-CN')}
+            <div className="text-moss-white/40 font-mono text-xs" suppressHydrationWarning>
+              {currentTime ? currentTime.toLocaleDateString('zh-CN') : '----/--/--'}
             </div>
           </div>
         </div>
