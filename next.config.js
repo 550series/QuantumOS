@@ -16,6 +16,8 @@ const nextConfig = {
   trailingSlash: true,
   basePath: '',
   assetPrefix: '',
+  // 静态导出配置
+  output: 'export',
 };
 
 module.exports = nextConfig;

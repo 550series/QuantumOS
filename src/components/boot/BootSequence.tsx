@@ -2,7 +2,6 @@
 
 import React, { useEffect, useState, Suspense } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { useRouter } from 'next/navigation';
 import dynamic from 'next/dynamic';
 import { CodeRain } from './CodeRain';
 import { SystemStatus } from './SystemStatus';
@@ -29,7 +28,6 @@ const bootMessages = [
 ];
 
 export const BootSequence: React.FC = () => {
-  const router = useRouter();
   const [stage, setStage] = useState<BootStage>('black');
   const [progress, setProgress] = useState(0);
   const [messages, setMessages] = useState<string[]>([]);
@@ -43,7 +41,10 @@ export const BootSequence: React.FC = () => {
       { time: 24000, action: () => setStage('moss_init') },
       { time: 24500, action: () => setShowEye(true) },
       { time: 28000, action: () => setStage('complete') },
-      { time: 30000, action: () => router.push('/desktop') },
+      { time: 30000, action: () => {
+        // 使用 window.location.href 进行跳转，确保在静态导出模式下正常工作
+        window.location.href = '/desktop';
+      }},
     ];
 
     const timeouts = timeline.map(({ time, action }) =>
@@ -62,7 +63,7 @@ export const BootSequence: React.FC = () => {
       timeouts.forEach(clearTimeout);
       clearInterval(progressInterval);
     };
-  }, [router]);
+  }, []);
 
   // 系统检测消息
   useEffect(() => {
