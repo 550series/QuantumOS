@@ -8,6 +8,8 @@ import {
   getDecisions,
   MOSSDecisionEngine,
   getMossMessage,
+  getMossAnalysisMessage,
+  getMossInfoMessage,
 } from '@/lib/ai/decisionEngine';
 import { Panel } from '@/components/ui/Panel/Panel';
 import { Button } from '@/components/ui/Button/Button';
@@ -31,6 +33,7 @@ const decisionTypeNames = {
   task_priority: '任务优先级',
   system_maintenance: '系统维护',
   anomaly_detection: '异常检测',
+  energy_optimization: '能源优化',
 };
 
 const urgencyColors = {
@@ -141,8 +144,13 @@ export const AIDecisionCenter: React.FC = () => {
     if (decision) {
       addMessage({
         type: 'decision',
-        content: `新决策已生成：${decisionTypeNames[decision.type]}`,
+        content: `${getMossMessage('decision')}新决策已生成：${decisionTypeNames[decision.type]}`,
         action: decision.id,
+      });
+
+      addMessage({
+        type: 'info',
+        content: getMossAnalysisMessage(),
       });
 
       const updated = await getDecisions();
@@ -153,7 +161,7 @@ export const AIDecisionCenter: React.FC = () => {
     } else {
       addMessage({
         type: 'info',
-        content: '系统状态正常，无需特殊决策',
+        content: getMossInfoMessage(),
       });
     }
 
