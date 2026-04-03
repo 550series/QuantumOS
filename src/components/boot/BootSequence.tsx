@@ -11,16 +11,16 @@ type BootStage = 'black' | 'code_rain' | 'system_check' | 'moss_init' | 'complet
 
 const bootMessages = [
   { text: '正在初始化量子计算核心...', delay: 0 },
-  { text: '加载人工智能决策引擎...', delay: 800 },
-  { text: '检测系统硬件状态...', delay: 1600 },
-  { text: 'CPU: 量子处理器 128核心 [正常]', delay: 2400 },
-  { text: '内存: 8192TB 量子内存 [正常]', delay: 3200 },
-  { text: '存储: 无限量子存储 [正常]', delay: 4000 },
-  { text: '网络: 量子纠缠通信 [已连接]', delay: 4800 },
-  { text: 'AI核心: MOSS v4.0.0 [就绪]', delay: 5600 },
-  { text: '', delay: 6400 },
-  { text: 'MOSS人工智能操作系统启动完成', delay: 7200 },
-  { text: '让人类永远保持理智', delay: 8000 },
+  { text: '加载人工智能决策引擎...', delay: 400 },
+  { text: '检测系统硬件状态...', delay: 800 },
+  { text: 'CPU: 量子处理器 128核心 [正常]', delay: 1200 },
+  { text: '内存: 8192TB 量子内存 [正常]', delay: 1600 },
+  { text: '存储: 无限量子存储 [正常]', delay: 2000 },
+  { text: '网络: 量子纠缠通信 [已连接]', delay: 2400 },
+  { text: 'AI核心: MOSS v4.0.0 [就绪]', delay: 2800 },
+  { text: '', delay: 3200 },
+  { text: 'MOSS人工智能操作系统启动完成', delay: 3600 },
+  { text: '让人类永远保持理智', delay: 4000 },
 ];
 
 export const BootSequence: React.FC = () => {
@@ -33,12 +33,12 @@ export const BootSequence: React.FC = () => {
   useEffect(() => {
     const timeline = [
       { time: 0, action: () => setStage('black') },
-      { time: 1000, action: () => setStage('code_rain') },
-      { time: 20000, action: () => setStage('system_check') }, // 延长代码雨阶段到20秒
-      { time: 24000, action: () => setStage('moss_init') },
-      { time: 24500, action: () => setShowEye(true) },
-      { time: 28000, action: () => setStage('complete') },
-      { time: 30000, action: () => router.push('/desktop') },
+      { time: 500, action: () => setStage('code_rain') },
+      { time: 10000, action: () => setStage('system_check') }, // 延长代码雨阶段到10秒
+      { time: 12000, action: () => setStage('moss_init') },
+      { time: 12250, action: () => setShowEye(true) },
+      { time: 14000, action: () => setStage('complete') },
+      { time: 15000, action: () => router.push('/desktop') },
     ];
 
     const timeouts = timeline.map(({ time, action }) =>
@@ -49,7 +49,7 @@ export const BootSequence: React.FC = () => {
     const progressInterval = setInterval(() => {
       setProgress((prev) => {
         if (prev >= 100) return 100;
-        return prev + 100 / 300; // 300次更新，总计30秒
+        return prev + 100 / 150; // 150次更新，总计15秒
       });
     }, 100);
 
