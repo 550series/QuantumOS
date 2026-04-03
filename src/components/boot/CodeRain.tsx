@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useRef } from 'react';
 
 // MOSS相关的真实代码片段
 const mossCodeSnippets = [
@@ -705,10 +705,26 @@ const mossCodeSnippets = [
   'console.log("System ready.");'
 ];
 
+// 配置常量
+const FONT_SIZE = 14;
+const LINE_HEIGHT = FONT_SIZE + 4;
+const PADDING_X = 20;
+const PADDING_TOP = 40;
+const LINE_ADD_INTERVAL = 80; // 每80ms添加新行
+const LINES_PER_ADD = 3; // 每次添加3行
+
 export const CodeRain: React.FC = () => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
-  const [currentLine, setCurrentLine] = useState(0);
-  const [displayedLines, setDisplayedLines] = useState<string[]>([]);
+  
+  // 使用 ref 存储所有可变状态，避免触发 re-render
+  const stateRef = useRef({
+    currentLineIndex: 0,
+    displayedLines: [] as string[],
+    drops: [] as number[],
+    lastLineAddTime: 0,
+    scrollOffset: 0,
+    isInitialized: false,
+  });
 
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -717,87 +733,127 @@ export const CodeRain: React.FC = () => {
     const ctx = canvas.getContext('2d');
     if (!ctx) return;
 
-    // 设置canvas尺寸
+    let animationFrameId: number;
+    const state = stateRef.current;
+    
+    // 矩阵雨字符集
+    const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789!@#$%^&*()_+-=[]{}|;:,.<>?/\\~`'.split('');
+
+    // 设置canvas尺寸并初始化drops数组
     const resizeCanvas = () => {
-      canvas.width = window.innerWidth * 0.5; // 左侧50%宽度，铺满左侧
+      canvas.width = window.innerWidth * 0.5;
       canvas.height = window.innerHeight;
+      
+      // 重新初始化drops数组
+      const columns = Math.floor(canvas.width / FONT_SIZE);
+      state.drops = new Array(columns).fill(0).map(() => Math.random() * canvas.height / FONT_SIZE);
     };
+    
     resizeCanvas();
     window.addEventListener('resize', resizeCanvas);
 
-    // 加载代码行
-    const loadCodeLine = () => {
-      const linesToAdd = 3; // 每次加载3行
-      for (let i = 0; i < linesToAdd; i++) {
-        if (currentLine + i < mossCodeSnippets.length) {
-          setDisplayedLines(prev => [...prev, mossCodeSnippets[currentLine + i]]);
+    // 主渲染循环
+    const render = (timestamp: number) => {
+      if (!ctx || !canvas) return;
+
+      // 控制代码行添加速度
+      if (timestamp - state.lastLineAddTime >= LINE_ADD_INTERVAL) {
+        state.lastLineAddTime = timestamp;
+        
+        // 添加新的代码行
+        for (let i = 0; i < LINES_PER_ADD; i++) {
+          if (state.currentLineIndex < mossCodeSnippets.length) {
+            state.displayedLines.push(mossCodeSnippets[state.currentLineIndex]);
+            state.currentLineIndex++;
+          } else {
+            // 循环播放：重置到开头
+            state.currentLineIndex = 0;
+            state.displayedLines = [];
+            state.scrollOffset = 0;
+          }
+        }
+        
+        // 计算滚动偏移（终端滚动效果）
+        const totalContentHeight = state.displayedLines.length * LINE_HEIGHT + PADDING_TOP;
+        const maxVisibleHeight = canvas.height - PADDING_TOP;
+        
+        if (totalContentHeight > maxVisibleHeight) {
+          // 内容超出可视区域，向上滚动使最新行可见
+          state.scrollOffset = totalContentHeight - maxVisibleHeight;
         }
       }
-      setCurrentLine(prev => prev + linesToAdd);
-    };
 
-    // 每80毫秒加载代码行，加快速度
-    const lineInterval = setInterval(loadCodeLine, 80);
-
-    const draw = () => {
-      // 半透明背景，创建拖尾效果
-      ctx.fillStyle = 'rgba(10, 14, 23, 0.05)';
+      // 绘制背景（半透明叠加创建拖尾效果）
+      ctx.fillStyle = 'rgba(10, 14, 23, 0.1)';
       ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-      // 设置字体和颜色
-      const fontSize = 14;
-      ctx.font = `${fontSize}px Consolas, Monaco, monospace`;
-
-      // 绘制已加载的代码行
-      displayedLines.forEach((line, index) => {
-        // 计算位置
-        const x = 20;
-        const y = 40 + index * (fontSize + 4);
-
-        // 创建渐变色
-        const gradient = ctx.createLinearGradient(x, y - fontSize * 5, x, y);
-        gradient.addColorStop(0, 'rgba(100, 255, 218, 0)');
-        gradient.addColorStop(0.5, 'rgba(100, 255, 218, 0.7)');
-        gradient.addColorStop(1, 'rgba(100, 255, 218, 1)');
-
-        ctx.fillStyle = gradient;
-        ctx.fillText(line, x, y);
-      });
-
-      // 绘制矩阵风格的背景字符
-      const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789!@#$%^&*()_+-=[]{}|;:,.<>?/\\~`'.split('');
-      const columns = Math.floor(canvas.width / fontSize);
-      const drops: number[] = Array(columns).fill(1);
-
-      for (let i = 0; i < drops.length; i++) {
-        // 随机选择字符
+      // 绘制矩阵雨背景
+      ctx.font = `${FONT_SIZE}px Consolas, Monaco, monospace`;
+      
+      for (let i = 0; i < state.drops.length; i++) {
         const char = chars[Math.floor(Math.random() * chars.length)];
-
-        // 计算位置
-        const x = i * fontSize;
-        const y = drops[i] * fontSize;
+        const x = i * FONT_SIZE;
+        const y = state.drops[i] * FONT_SIZE;
 
         // 淡色背景字符
-        ctx.fillStyle = 'rgba(100, 255, 218, 0.1)';
+        ctx.fillStyle = 'rgba(100, 255, 218, 0.08)';
         ctx.fillText(char, x, y);
 
-        // 随机重置或继续下落
-        if (drops[i] * fontSize > canvas.height && Math.random() > 0.975) {
-          drops[i] = 0;
+        // 下落逻辑
+        if (y > canvas.height && Math.random() > 0.975) {
+          state.drops[i] = 0;
+        }
+        state.drops[i] += 0.5; // 缓慢下落
+      }
+
+      // 绘制代码行
+      const visibleStartY = PADDING_TOP - state.scrollOffset;
+      
+      state.displayedLines.forEach((line, index) => {
+        const y = visibleStartY + index * LINE_HEIGHT;
+        
+        // 只绘制可见区域内的行
+        if (y < -LINE_HEIGHT || y > canvas.height + LINE_HEIGHT) return;
+        
+        // 计算行的淡入效果（新行更亮）
+        const isRecentLine = index >= state.displayedLines.length - LINES_PER_ADD * 3;
+        const lineAge = state.displayedLines.length - index;
+        const fadeAlpha = Math.max(0.4, Math.min(1, 1 - (lineAge - LINES_PER_ADD * 3) * 0.01));
+        
+        // 为最新添加的行创建发光效果
+        if (isRecentLine) {
+          ctx.shadowColor = 'rgba(100, 255, 218, 0.5)';
+          ctx.shadowBlur = 8;
+        } else {
+          ctx.shadowBlur = 0;
         }
 
-        drops[i]++;
-      }
+        // 根据行的"年龄"设置颜色渐变
+        if (isRecentLine) {
+          ctx.fillStyle = `rgba(100, 255, 218, ${fadeAlpha})`;
+        } else {
+          ctx.fillStyle = `rgba(100, 255, 218, ${fadeAlpha * 0.7})`;
+        }
+        
+        ctx.fillText(line, PADDING_X, y);
+      });
+
+      // 重置阴影
+      ctx.shadowBlur = 0;
+
+      // 继续动画循环
+      animationFrameId = requestAnimationFrame(render);
     };
 
-    const drawInterval = setInterval(draw, 50);
+    // 启动动画
+    animationFrameId = requestAnimationFrame(render);
 
+    // 清理函数
     return () => {
-      clearInterval(drawInterval);
-      clearInterval(lineInterval);
+      cancelAnimationFrame(animationFrameId);
       window.removeEventListener('resize', resizeCanvas);
     };
-  }, [currentLine, displayedLines]);
+  }, []); // 空依赖数组，只在挂载时运行一次
 
   return (
     <canvas
