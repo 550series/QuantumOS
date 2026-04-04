@@ -6,7 +6,8 @@ import { useSystemStore } from '@/stores';
 import { FileManager } from '@/components/file-manager';
 import { TaskScheduler } from '@/components/task-scheduler';
 import { AIDecisionCenter } from '@/components/ai-system';
-import { LogViewer, AlertSystem } from '@/components/system';
+import { LogViewer, AlertSystem, EventMonitor, SystemMonitor } from '@/components/system';
+import { SimulationPanel } from '@/components/simulation';
 import { Button } from '@/components/ui';
 import {
   FolderOpen,
@@ -17,9 +18,10 @@ import {
   Settings,
   Grid,
   LayoutGrid,
+  AlertCircle,
 } from 'lucide-react';
 
-type AppType = 'file-manager' | 'task-scheduler' | 'ai-center' | 'log-viewer' | 'alert-system' | 'settings';
+type AppType = 'file-manager' | 'task-scheduler' | 'ai-center' | 'log-viewer' | 'alert-system' | 'settings' | 'simulation' | 'event-monitor' | 'system-monitor';
 
 const appConfig = {
   'file-manager': {
@@ -87,6 +89,24 @@ const appConfig = {
       </div>
     ),
     defaultSize: { width: 600, height: 500 },
+  },
+  'simulation': {
+    title: '模拟系统',
+    icon: <Activity className="w-5 h-5" />,
+    component: SimulationPanel,
+    defaultSize: { width: 800, height: 600 },
+  },
+  'event-monitor': {
+    title: '事件监控',
+    icon: <AlertCircle className="w-5 h-5" />,
+    component: EventMonitor,
+    defaultSize: { width: 1000, height: 600 },
+  },
+  'system-monitor': {
+    title: '系统监控',
+    icon: <Activity className="w-5 h-5" />,
+    component: SystemMonitor,
+    defaultSize: { width: 1000, height: 600 },
   },
 };
 
