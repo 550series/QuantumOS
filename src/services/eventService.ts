@@ -2,6 +2,7 @@ import { v4 as uuidv4 } from 'uuid';
 import { useSystemStore } from '@/stores';
 import { useAIStore } from '@/stores';
 import { useTaskStore } from '@/stores';
+import type { Task } from '@/types';
 
 // 事件类型
 export type EventType = 'system' | 'security' | 'performance' | 'network' | 'storage';
@@ -107,7 +108,7 @@ const eventTemplates: Array<{
     probability: 5,
     taskCreation: true,
     taskTitle: '调查可疑登录',
-    description: '分析可疑登录尝试，加强安全措施',
+    taskDescription: '分析可疑登录尝试，加强安全措施',
   },
 ];
 
@@ -173,7 +174,7 @@ export class EventSystem {
     systemStore.addNotification({
       title: event.title,
       message: event.description,
-      type: event.severity,
+      type: event.severity === 'critical' ? 'error' : event.severity,
     });
 
     // 添加MOSS消息
@@ -186,15 +187,32 @@ export class EventSystem {
     // 创建相关任务
     if (template.taskCreation && template.taskTitle && template.taskDescription) {
       const taskStore = useTaskStore.getState();
-      const taskId = taskStore.addTask({
-        title: template.taskTitle,
+      const newTask: Task = {
+        id: uuidv4(),
+        name: template.taskTitle,
         description: template.taskDescription,
-        priority: event.severity === 'critical' ? 'critical' : event.severity === 'error' ? 'high' : 'medium',
         status: 'pending',
-        category: 'system',
-      });
-
-      event.relatedTaskId = taskId;
+        priority: event.severity === 'critical' ? 'critical' : event.severity === 'error' ? 'high' : 'normal',
+        progress: 0,
+        dependencies: [],
+        scheduledAt: null,
+        startedAt: null,
+        completedAt: null,
+        result: null,
+        error: null,
+        resources: {
+          cpu: 0,
+          memory: 0,
+          network: 0,
+        },
+        metadata: {
+          category: 'system',
+        },
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      };
+      taskStore.addTask(newTask);
+      event.relatedTaskId = newTask.id;
     }
 
     // 生成AI决策（针对严重事件）
@@ -254,7 +272,7 @@ export class EventSystem {
     systemStore.addNotification({
       title: event.title,
       message: event.description,
-      type: event.severity,
+      type: event.severity === 'critical' ? 'error' : event.severity,
     });
 
     return newEvent;
