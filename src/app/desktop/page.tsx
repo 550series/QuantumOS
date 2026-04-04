@@ -3,7 +3,7 @@
 import React, { useEffect, useState } from 'react';
 import { motion } from 'framer-motion';
 import { useSystemStore } from '@/stores';
-import { FileManager } from '@/components/file-manager';
+
 import { TaskScheduler } from '@/components/task-scheduler';
 import { AIDecisionCenter } from '@/components/ai-system';
 import { LogViewer, AlertSystem, EventMonitor, SystemMonitor } from '@/components/system';
@@ -21,15 +21,10 @@ import {
   AlertCircle,
 } from 'lucide-react';
 
-type AppType = 'file-manager' | 'task-scheduler' | 'ai-center' | 'log-viewer' | 'alert-system' | 'settings' | 'simulation' | 'event-monitor' | 'system-monitor';
+type AppType = 'task-scheduler' | 'ai-center' | 'log-viewer' | 'alert-system' | 'settings' | 'simulation' | 'event-monitor' | 'system-monitor';
 
 const appConfig = {
-  'file-manager': {
-    title: '文件管理器',
-    icon: <FolderOpen className="w-5 h-5" />,
-    component: FileManager,
-    defaultSize: { width: 900, height: 600 },
-  },
+
   'task-scheduler': {
     title: '任务调度器',
     icon: <Activity className="w-5 h-5" />,
