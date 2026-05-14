@@ -52,7 +52,7 @@ export const EventMonitor = memo(function EventMonitor() {
     };
 
     updateEvents();
-    const interval = setInterval(updateEvents, 3000);
+    const interval = setInterval(updateEvents, 5000);
     return () => clearInterval(interval);
   }, []);
 

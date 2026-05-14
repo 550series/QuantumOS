@@ -66,7 +66,7 @@ export const LogViewer = memo(function LogViewer() {
     const interval = setInterval(async () => {
       const logs = await getLogs(200);
       setLogs(logs);
-    }, 3000);
+    }, 10000);
 
     return () => clearInterval(interval);
   }, [autoRefresh]);

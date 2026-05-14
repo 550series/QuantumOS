@@ -1,106 +1,78 @@
 'use client';
 
-import React, { memo, useRef, useMemo } from 'react';
-import { Canvas, useFrame } from '@react-three/fiber';
-import { OrbitControls, Line } from '@react-three/drei';
-import * as THREE from 'three';
-
-const MossEyeCore: React.FC = () => {
-  const meshRef = useRef<THREE.Mesh>(null);
-  const ringRef = useRef<THREE.Mesh>(null);
-  const innerRingRef = useRef<THREE.Mesh>(null);
-
-  // 创建圆形几何体
-  const circleGeometry = useMemo(() => new THREE.RingGeometry(0.8, 1, 64), []);
-  const innerCircleGeometry = useMemo(() => new THREE.RingGeometry(0.3, 0.5, 64), []);
-  const coreGeometry = useMemo(() => new THREE.CircleGeometry(0.25, 32), []);
-
-  // 动画
-  useFrame((state) => {
-    if (meshRef.current) {
-      // 脉动效果
-      const scale = 1 + Math.sin(state.clock.elapsedTime * 2) * 0.05;
-      meshRef.current.scale.set(scale, scale, 1);
-    }
-    if (ringRef.current) {
-      // 旋转外环
-      ringRef.current.rotation.z += 0.01;
-    }
-    if (innerRingRef.current) {
-      // 反向旋转内环
-      innerRingRef.current.rotation.z -= 0.015;
-    }
-  });
-
-  return (
-    <group>
-      {/* 外圈 */}
-      <mesh ref={ringRef} geometry={circleGeometry}>
-        <meshBasicMaterial
-          color="#00F0FF"
-          transparent
-          opacity={0.8}
-          side={THREE.DoubleSide}
-        />
-      </mesh>
-
-      {/* 内圈 */}
-      <mesh ref={innerRingRef} geometry={innerCircleGeometry}>
-        <meshBasicMaterial
-          color="#00F0FF"
-          transparent
-          opacity={0.6}
-          side={THREE.DoubleSide}
-        />
-      </mesh>
-
-      {/* 核心 */}
-      <mesh ref={meshRef} geometry={coreGeometry}>
-        <meshBasicMaterial
-          color="#00F0FF"
-          transparent
-          opacity={1}
-        />
-      </mesh>
-
-      {/* 扫描线 */}
-      <Line
-        points={[[-1.2, 0, 0], [1.2, 0, 0]]}
-        color="#00F0FF"
-        lineWidth={1}
-        transparent
-        opacity={0.3}
-      />
-      <Line
-        points={[[0, -1.2, 0], [0, 1.2, 0]]}
-        color="#00F0FF"
-        lineWidth={1}
-        transparent
-        opacity={0.3}
-      />
-
-      {/* 外围装饰环 */}
-      <Line
-        points={Array.from({ length: 65 }, (_, i) => {
-          const angle = (i / 64) * Math.PI * 2;
-          return [Math.cos(angle) * 1.3, Math.sin(angle) * 1.3, 0];
-        })}
-        color="#00F0FF"
-        lineWidth={1}
-        transparent
-        opacity={0.4}
-      />
-    </group>
-  );
-};
+import React, { memo } from 'react';
 
 export const MossEye = memo(function MossEye() {
   return (
-    <div className="w-64 h-64">
-      <Canvas camera={{ position: [0, 0, 3], fov: 50 }}>
-        <MossEyeCore />
-        <OrbitControls enableZoom={false} enableRotate={false} enablePan={false} />
-      </Canvas>
+    <div className="w-64 h-64 relative flex items-center justify-center">
+      <style>{`
+        @keyframes moss-rotate {
+          from { transform: rotate(0deg); }
+          to { transform: rotate(360deg); }
+        }
+        @keyframes moss-rotate-reverse {
+          from { transform: rotate(0deg); }
+          to { transform: rotate(-360deg); }
+        }
+        @keyframes moss-pulse {
+          0%, 100% { transform: scale(1); }
+          50% { transform: scale(1.05); }
+        }
+        .moss-outer-ring {
+          width: 160px;
+          height: 160px;
+          border-radius: 50%;
+          border: 2px solid rgba(0, 240, 255, 0.8);
+          animation: moss-rotate 6s linear infinite;
+          position: absolute;
+        }
+        .moss-inner-ring {
+          width: 80px;
+          height: 80px;
+          border-radius: 50%;
+          border: 2px solid rgba(0, 240, 255, 0.6);
+          animation: moss-rotate-reverse 4s linear infinite;
+          position: absolute;
+        }
+        .moss-core {
+          width: 30px;
+          height: 30px;
+          border-radius: 50%;
+          background: #00F0FF;
+          box-shadow: 0 0 20px rgba(0, 240, 255, 0.8), 0 0 40px rgba(0, 240, 255, 0.4);
+          animation: moss-pulse 2s ease-in-out infinite;
+          position: absolute;
+        }
+        .moss-scan-line-h {
+          position: absolute;
+          width: 130%;
+          height: 1px;
+          background: rgba(0, 240, 255, 0.3);
+          top: 50%;
+          left: -15%;
+        }
+        .moss-scan-line-v {
+          position: absolute;
+          width: 1px;
+          height: 130%;
+          background: rgba(0, 240, 255, 0.3);
+          left: 50%;
+          top: -15%;
+        }
+        .moss-decor-ring {
+          width: 200px;
+          height: 200px;
+          border-radius: 50%;
+          border: 1px solid rgba(0, 240, 255, 0.15);
+          position: absolute;
+        }
+      `}</style>
+      <div className="moss-decor-ring" />
+      <div className="moss-outer-ring" />
+      <div className="moss-inner-ring" />
+      <div className="moss-scan-line-h" />
+      <div className="moss-scan-line-v" />
+      <div className="moss-core" />
     </div>
   );
 });

@@ -35,7 +35,7 @@ export default function DesktopPage() {
         },
         uptime: Math.floor(Math.random() * 86400),
       });
-    }, 2000);
+    }, 5000);
 
     const timeInterval = setInterval(() => {
       setCurrentTime(new Date());

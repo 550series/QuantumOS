@@ -34,7 +34,7 @@ export const SystemStatus = memo(function SystemStatus() {
       }));
     };
 
-    const interval = setInterval(updateMetrics, 1000);
+    const interval = setInterval(updateMetrics, 3000);
     return () => clearInterval(interval);
   }, []);
 

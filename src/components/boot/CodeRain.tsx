@@ -2,52 +2,36 @@
 
 import React, { memo, useEffect, useRef } from 'react';
 
-// MOSS相关的真实代码片段
 const mossCodeSnippets = [
   'class MossLLM {',
   '  constructor(config) {',
-  '    this.modelPath = config.modelPath;',
   '    this.tokenizer = new Tokenizer(config.tokenizerPath);',
-  '    this.encoder = new Encoder();',
-  '    this.decoder = new Decoder();',
   '    this.attention = new MultiHeadAttention(config.numHeads);',
   '    this.feedForward = new FeedForward(config.hiddenSize);',
   '    this.layerNorm1 = new LayerNorm(config.hiddenSize);',
   '    this.layerNorm2 = new LayerNorm(config.hiddenSize);',
-  '    this.dropout = new Dropout(config.dropoutRate);',
   '  }',
   '',
   '  async generate(prompt, options = {}) {',
   '    const tokens = this.tokenizer.encode(prompt);',
   '    const maxTokens = options.maxTokens || 100;',
   '    const temperature = options.temperature || 0.7;',
-  '    const topP = options.topP || 0.9;',
-  '    const topK = options.topK || 50;',
   '',
   '    for (let i = 0; i < maxTokens; i++) {',
   '      const logits = await this.forward(tokens);',
-  '      const nextToken = this.sample(logits, temperature, topP, topK);',
+  '      const nextToken = this.sample(logits, temperature);',
   '      tokens.push(nextToken);',
-  '',
-  '      if (nextToken === this.tokenizer.eosToken) {',
-  '        break;',
-  '      }',
+  '      if (nextToken === this.tokenizer.eosToken) break;',
   '    }',
-  '',
   '    return this.tokenizer.decode(tokens);',
   '  }',
   '',
   '  async forward(tokens) {',
-  '    // 模型前向传播',
   '    const embeddings = this.encoder.encode(tokens);',
-  '    const positionalEmbeddings = this.getPositionalEmbeddings(tokens.length);',
-  '    let hiddenStates = embeddings.add(positionalEmbeddings);',
-  '    hiddenStates = this.dropout.apply(hiddenStates);',
-  '',
+  '    let hiddenStates = embeddings.add(this.getPositionalEmbeddings(tokens.length));',
   '    for (let layer of this.layers) {',
   '      hiddenStates = await layer.forward(hiddenStates);',
   '    }',
-  '',
   '    return this.decoder.forward(hiddenStates);',
   '  }',
   '',
@@ -64,40 +48,11 @@ const mossCodeSnippets = [
   '    return embeddings;',
   '  }',
   '',
-  '  sample(logits, temperature, topP, topK) {',
-  '    // 采样下一个token',
-  '    if (temperature === 0) {',
-  '      return logits.argmax();',
-  '    }',
-  '',
+  '  sample(logits, temperature) {',
+  '    if (temperature === 0) return logits.argmax();',
   '    let scaledLogits = logits.map(l => l / temperature);',
-  '    scaledLogits = this.applyTopK(scaledLogits, topK);',
-  '    scaledLogits = this.applyTopP(scaledLogits, topP);',
   '    const probabilities = this.softmax(scaledLogits);',
   '    return this.multinomial(probabilities);',
-  '  }',
-  '',
-  '  applyTopK(logits, k) {',
-  '    const sortedIndices = logits',
-  '      .map((val, idx) => [val, idx])',
-  '      .sort((a, b) => b[0] - a[0])',
-  '      .slice(0, k)',
-  '      .map(([_, idx]) => idx);',
-  '',
-  '    return logits.map((val, idx) => sortedIndices.includes(idx) ? val : -Infinity);',
-  '  }',
-  '',
-  '  applyTopP(logits, p) {',
-  '    const sortedLogits = [...logits].sort((a, b) => b - a);',
-  '    const cumulativeProbs = this.softmax(sortedLogits).reduce((acc, prob, i) => {',
-  '      acc.push((acc[i - 1] || 0) + prob);',
-  '      return acc;',
-  '    }, []);',
-  '',
-  '    const cutoffIndex = cumulativeProbs.findIndex(cp => cp >= p);',
-  '    const cutoffValue = sortedLogits[cutoffIndex];',
-  '',
-  '    return logits.map(val => val >= cutoffValue ? val : -Infinity);',
   '  }',
   '',
   '  softmax(logits) {',
@@ -106,167 +61,41 @@ const mossCodeSnippets = [
   '    const sumExp = expLogits.reduce((a, b) => a + b, 0);',
   '    return expLogits.map(e => e / sumExp);',
   '  }',
-  '',
-  '  multinomial(probabilities) {',
-  '    const rand = Math.random();',
-  '    let cumulative = 0;',
-  '    for (let i = 0; i < probabilities.length; i++) {',
-  '      cumulative += probabilities[i];',
-  '      if (rand <= cumulative) {',
-  '        return i;',
-  '      }',
-  '    }',
-  '    return probabilities.length - 1;',
-  '  }',
   '}',
   '',
   'class TransformerLayer {',
   '  constructor(config) {',
-  '    this.selfAttention = new MultiHeadAttention(config.numHeads, config.hiddenSize);',
-  '    this.crossAttention = config.useCrossAttention ? new MultiHeadAttention(config.numHeads, config.hiddenSize) : null;',
-  '    this.feedForward = new FeedForward(config.hiddenSize, config.intermediateSize);',
+  '    this.selfAttention = new MultiHeadAttention(config.numHeads);',
+  '    this.feedForward = new FeedForward(config.hiddenSize);',
   '    this.layerNorm1 = new LayerNorm(config.hiddenSize);',
   '    this.layerNorm2 = new LayerNorm(config.hiddenSize);',
-  '    this.layerNorm3 = config.useCrossAttention ? new LayerNorm(config.hiddenSize) : null;',
-  '    this.dropout1 = new Dropout(config.dropoutRate);',
-  '    this.dropout2 = new Dropout(config.dropoutRate);',
-  '    this.dropout3 = config.useCrossAttention ? new Dropout(config.dropoutRate) : null;',
   '  }',
   '',
-  '  async forward(hiddenStates, encoderOutputs = null, attentionMask = null) {',
-  '    // Self-attention sublayer',
-  '    const normedStates1 = this.layerNorm1.forward(hiddenStates);',
-  '    const attentionOutput = await this.selfAttention.forward(',
-  '      normedStates1, normedStates1, normedStates1, attentionMask',
-  '    );',
-  '    hiddenStates = hiddenStates.add(this.dropout1.apply(attentionOutput));',
-  '',
-  '    // Cross-attention sublayer (if enabled)',
-  '    if (this.crossAttention && encoderOutputs) {',
-  '      const normedStates2 = this.layerNorm3.forward(hiddenStates);',
-  '      const crossAttentionOutput = await this.crossAttention.forward(',
-  '        normedStates2, encoderOutputs, encoderOutputs, attentionMask',
-  '      );',
-  '      hiddenStates = hiddenStates.add(this.dropout3.apply(crossAttentionOutput));',
-  '    }',
-  '',
-  '    // Feed-forward sublayer',
-  '    const normedStates3 = this.layerNorm2.forward(hiddenStates);',
-  '    const ffOutput = this.feedForward.forward(normedStates3);',
-  '    hiddenStates = hiddenStates.add(this.dropout2.apply(ffOutput));',
-  '',
-  '    return hiddenStates;',
+  '  async forward(hiddenStates) {',
+  '    const normed = this.layerNorm1.forward(hiddenStates);',
+  '    const attnOut = await this.selfAttention.forward(normed, normed, normed);',
+  '    hiddenStates = hiddenStates.add(attnOut);',
+  '    const ffOut = this.feedForward.forward(this.layerNorm2.forward(hiddenStates));',
+  '    return hiddenStates.add(ffOut);',
   '  }',
   '}',
   '',
   'class MultiHeadAttention {',
   '  constructor(numHeads, hiddenSize) {',
   '    this.numHeads = numHeads;',
-  '    this.hiddenSize = hiddenSize;',
   '    this.headSize = hiddenSize / numHeads;',
-  '    this.wq = new LinearLayer(hiddenSize, hiddenSize);',
-  '    this.wk = new LinearLayer(hiddenSize, hiddenSize);',
-  '    this.wv = new LinearLayer(hiddenSize, hiddenSize);',
-  '    this.wo = new LinearLayer(hiddenSize, hiddenSize);',
   '  }',
   '',
   '  async forward(q, k, v, mask = null) {',
-  '    const batchSize = q.length;',
-  '    const seqLength = q[0].length;',
-  '',
-  '    // Linear projections',
-  '    const qProj = this.wq.forward(q);',
-  '    const kProj = this.wk.forward(k);',
-  '    const vProj = this.wv.forward(v);',
-  '',
-  '    // Split into heads',
-  '    const qHeads = this.splitHeads(qProj, batchSize, seqLength);',
-  '    const kHeads = this.splitHeads(kProj, batchSize, seqLength);',
-  '    const vHeads = this.splitHeads(vProj, batchSize, seqLength);',
-  '',
-  '    // Scaled dot-product attention',
-  '    const attentionScores = this.scaledDotProductAttention(qHeads, kHeads, mask);',
-  '    const attentionOutput = this.matmul(attentionScores, vHeads);',
-  '',
-  '    // Concatenate heads',
-  '    const concatenated = this.concatenateHeads(attentionOutput, batchSize, seqLength);',
-  '',
-  '    // Final linear projection',
-  '    return this.wo.forward(concatenated);',
-  '  }',
-  '',
-  '  splitHeads(x, batchSize, seqLength) {',
-  '    const reshaped = [];',
-  '    for (let b = 0; b < batchSize; b++) {',
-  '      const batchHeads = [];',
-  '      for (let h = 0; h < this.numHeads; h++) {',
-  '        const head = [];',
-  '        for (let s = 0; s < seqLength; s++) {',
-  '          const start = h * this.headSize;',
-  '          const end = start + this.headSize;',
-  '          head.push(x[b][s].slice(start, end));',
-  '        }',
-  '        batchHeads.push(head);',
-  '      }',
-  '      reshaped.push(batchHeads);',
-  '    }',
-  '    return reshaped;',
-  '  }',
-  '',
-  '  scaledDotProductAttention(q, k, mask) {',
-  '    const dk = this.headSize;',
-  '    let scores = this.matmul(q, this.transpose(k, -2, -1));',
-  '    scores = scores.map(row => row.map(val => val / Math.sqrt(dk)));',
-  '',
-  '    if (mask) {',
-  '      scores = scores.map((row, i) => row.map((val, j) => mask[i][j] ? val : -Infinity));',
-  '    }',
-  '',
+  '    const scores = this.scaledDotProduct(q, k);',
+  '    if (mask) scores = scores.map((r, i) => r.map((v, j) => mask[i][j] ? v : -Infinity));',
   '    return scores.map(row => this.softmax(row));',
   '  }',
   '',
-  '  transpose(x, dim1, dim2) {',
-  '    const transposed = [];',
-  '    for (let i = 0; i < x[0].length; i++) {',
-  '      const newRow = [];',
-  '      for (let j = 0; j < x.length; j++) {',
-  '        newRow.push(x[j][i]);',
-  '      }',
-  '      transposed.push(newRow);',
-  '    }',
-  '    return transposed;',
-  '  }',
-  '',
-  '  matmul(a, b) {',
-  '    const result = [];',
-  '    for (let i = 0; i < a.length; i++) {',
-  '      const row = [];',
-  '      for (let j = 0; j < b[0].length; j++) {',
-  '        let sum = 0;',
-  '        for (let k = 0; k < a[0].length; k++) {',
-  '          sum += a[i][k] * b[k][j];',
-  '        }',
-  '        row.push(sum);',
-  '      }',
-  '      result.push(row);',
-  '    }',
-  '    return result;',
-  '  }',
-  '',
-  '  concatenateHeads(x, batchSize, seqLength) {',
-  '    const concatenated = [];',
-  '    for (let b = 0; b < batchSize; b++) {',
-  '      const batch = [];',
-  '      for (let s = 0; s < seqLength; s++) {',
-  '        const token = [];',
-  '        for (let h = 0; h < this.numHeads; h++) {',
-  '          token.push(...x[b][h][s]);',
-  '        }',
-  '        batch.push(token);',
-  '      }',
-  '      concatenated.push(batch);',
-  '    }',
-  '    return concatenated;',
+  '  scaledDotProduct(q, k) {',
+  '    const dk = this.headSize;',
+  '    let scores = this.matmul(q, this.transpose(k));',
+  '    return scores.map(row => row.map(val => val / Math.sqrt(dk)));',
   '  }',
   '}',
   '',
@@ -274,456 +103,42 @@ const mossCodeSnippets = [
   '  constructor(hiddenSize, intermediateSize) {',
   '    this.linear1 = new LinearLayer(hiddenSize, intermediateSize);',
   '    this.linear2 = new LinearLayer(intermediateSize, hiddenSize);',
-  '    this.activation = new GELU();',
   '  }',
-  '',
-  '  forward(x) {',
-  '    return this.linear2.forward(this.activation.forward(this.linear1.forward(x)));',
-  '  }',
+  '  forward(x) { return this.linear2.forward(this.gelu(this.linear1.forward(x))); }',
+  '  gelu(x) { const c = 0.5*(1+Math.tanh(Math.sqrt(2/Math.PI)*(x+0.044715*x**3))); return x*c; }',
   '}',
   '',
-  'class GELU {',
-  '  forward(x) {',
-  '    const cdf = 0.5 * (1.0 + Math.tanh(Math.sqrt(2 / Math.PI) * (x + 0.044715 * Math.pow(x, 3))));',
-  '    return x * cdf;',
+  'class AdamOptimizer {',
+  '  constructor(params, lr = 0.001, beta1 = 0.9, beta2 = 0.999) {',
+  '    this.lr = lr; this.beta1 = beta1; this.beta2 = beta2; this.t = 0;',
   '  }',
+  '  step() { this.t++; }',
   '}',
   '',
-  'class LinearLayer {',
-  '  constructor(inputSize, outputSize) {',
-  '    this.weights = this.initializeWeights(inputSize, outputSize);',
-  '    this.bias = new Array(outputSize).fill(0);',
-  '  }',
-  '',
-  '  initializeWeights(inputSize, outputSize) {',
-  '    const weights = [];',
-  '    const scale = Math.sqrt(2 / (inputSize + outputSize));',
-  '    for (let i = 0; i < inputSize; i++) {',
-  '      const row = [];',
-  '      for (let j = 0; j < outputSize; j++) {',
-  '        row.push((Math.random() - 0.5) * 2 * scale);',
-  '      }',
-  '      weights.push(row);',
-  '    }',
-  '    return weights;',
-  '  }',
-  '',
-  '  forward(x) {',
-  '    const result = [];',
-  '    for (let i = 0; i < x.length; i++) {',
-  '      const row = [];',
-  '      for (let j = 0; j < this.weights[0].length; j++) {',
-  '        let sum = this.bias[j];',
-  '        for (let k = 0; k < x[i].length; k++) {',
-  '          sum += x[i][k] * this.weights[k][j];',
-  '        }',
-  '        row.push(sum);',
-  '      }',
-  '      result.push(row);',
-  '    }',
-  '    return result;',
-  '  }',
-  '}',
-  '',
-  'class LayerNorm {',
-  '  constructor(hiddenSize, epsilon = 1e-5) {',
-  '    this.gamma = new Array(hiddenSize).fill(1);',
-  '    this.beta = new Array(hiddenSize).fill(0);',
-  '    this.epsilon = epsilon;',
-  '  }',
-  '',
-  '  forward(x) {',
-  '    const mean = x.reduce((a, b) => a + b, 0) / x.length;',
-  '    const variance = x.reduce((a, b) => a + Math.pow(b - mean, 2), 0) / x.length;',
-  '    return x.map((val, i) => this.gamma[i] * (val - mean) / Math.sqrt(variance + this.epsilon) + this.beta[i]);',
-  '  }',
-  '}',
-  '',
-  'class Dropout {',
-  '  constructor(dropoutRate) {',
-  '    this.dropoutRate = dropoutRate;',
-  '  }',
-  '',
-  '  apply(x, training = true) {',
-  '    if (!training) return x;',
-  '    const mask = x.map(() => Math.random() > this.dropoutRate ? 1 : 0);',
-  '    return x.map((val, i) => val * mask[i] / (1 - this.dropoutRate));',
-  '  }',
-  '}',
-  '',
-  'class Tokenizer {',
-  '  constructor(vocabPath) {',
-  '    this.vocab = this.loadVocab(vocabPath);',
-  '    this.vocabReverse = this.buildReverseVocab();',
-  '    this.eosToken = this.vocab["<|endoftext|>"];',
-  '    this.bosToken = this.vocab["<|beginoftext|>"];',
-  '    this.unkToken = this.vocab["<|unk|>"];',
-  '    this.padToken = this.vocab["<|pad|>"];',
-  '  }',
-  '',
-  '  loadVocab(vocabPath) {',
-  '    // 在实际实现中从文件加载',
-  '    const vocab = {};',
-  '    const chars = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789!@#$%^&*()_+-=[]{}|;:,.<>?/\\\\~` \'\"";',
-  '    let index = 0;',
-  '',
-  '    for (const char of chars) {',
-  '      vocab[char] = index++;',
-  '    }',
-  '',
-  '    vocab["<|endoftext|>"] = index++;',
-  '    vocab["<|beginoftext|>"] = index++;',
-  '    vocab["<|unk|>"] = index++;',
-  '    vocab["<|pad|>"] = index++;',
-  '',
-  '    return vocab;',
-  '  }',
-  '',
-  '  buildReverseVocab() {',
-  '    const reverse = {};',
-  '    for (const [key, value] of Object.entries(this.vocab)) {',
-  '      reverse[value] = key;',
-  '    }',
-  '    return reverse;',
-  '  }',
-  '',
-  '  encode(text) {',
-  '    // 文本编码为tokens',
-  '    const tokens = [this.bosToken];',
-  '    for (const char of text) {',
-  '      tokens.push(this.vocab[char] || this.unkToken);',
-  '    }',
-  '    tokens.push(this.eosToken);',
-  '    return tokens;',
-  '  }',
-  '',
-  '  decode(tokens) {',
-  '    // tokens解码为文本',
-  '    return tokens',
-  '      .filter(token => token !== this.bosToken && token !== this.eosToken && token !== this.padToken)',
-  '      .map(token => this.vocabReverse[token] || "<|unk|>")',
-  '      .join("");',
-  '  }',
-  '',
-  '  tokenize(text) {',
-  '    // 更高级的tokenization',
-  '    const words = text.split(/\\s+/);',
-  '    const tokens = [];',
-  '',
-  '    for (const word of words) {',
-  '      if (this.vocab[word]) {',
-  '        tokens.push(this.vocab[word]);',
-  '      } else {',
-  '        // 子词分词',
-  '        let remaining = word;',
-  '        while (remaining.length > 0) {',
-  '          let found = false;',
-  '          for (let len = remaining.length; len > 0; len--) {',
-  '            const subword = remaining.substring(0, len);',
-  '            if (this.vocab[subword]) {',
-  '              tokens.push(this.vocab[subword]);',
-  '              remaining = remaining.substring(len);',
-  '              found = true;',
-  '              break;',
-  '            }',
-  '          }',
-  '          if (!found) {',
-  '            tokens.push(this.unkToken);',
-  '            break;',
-  '          }',
-  '        }',
-  '      }',
-  '    }',
-  '',
-  '    return tokens;',
-  '  }',
-  '}',
-  '',
-  'class Optimizer {',
-  '  constructor(params, learningRate = 0.001) {',
-  '    this.params = params;',
-  '    this.learningRate = learningRate;',
-  '    this.timestep = 0;',
-  '  }',
-  '',
-  '  step() {',
-  '    this.timestep++;',
-  '  }',
-  '',
-  '  zeroGrad() {',
-  '    for (const param of this.params) {',
-  '      param.grad = new Array(param.grad.length).fill(0);',
-  '    }',
-  '  }',
-  '}',
-  '',
-  'class AdamOptimizer extends Optimizer {',
-  '  constructor(params, learningRate = 0.001, beta1 = 0.9, beta2 = 0.999, epsilon = 1e-8) {',
-  '    super(params, learningRate);',
-  '    this.beta1 = beta1;',
-  '    this.beta2 = beta2;',
-  '    this.epsilon = epsilon;',
-  '    this.m = params.map(p => new Array(p.length).fill(0));',
-  '    this.v = params.map(p => new Array(p.length).fill(0));',
-  '  }',
-  '',
-  '  step() {',
-  '    super.step();',
-  '    const biasCorrection1 = 1 - Math.pow(this.beta1, this.timestep);',
-  '    const biasCorrection2 = 1 - Math.pow(this.beta2, this.timestep);',
-  '',
-  '    for (let i = 0; i < this.params.length; i++) {',
-  '      for (let j = 0; j < this.params[i].length; j++) {',
-  '        this.m[i][j] = this.beta1 * this.m[i][j] + (1 - this.beta1) * this.params[i].grad[j];',
-  '        this.v[i][j] = this.beta2 * this.v[i][j] + (1 - this.beta2) * Math.pow(this.params[i].grad[j], 2);',
-  '',
-  '        const mHat = this.m[i][j] / biasCorrection1;',
-  '        const vHat = this.v[i][j] / biasCorrection2;',
-  '',
-  '        this.params[i][j] -= this.learningRate * mHat / (Math.sqrt(vHat) + this.epsilon);',
-  '      }',
-  '    }',
-  '  }',
-  '}',
-  '',
-  'class LossFunction {',
-  '  forward(predictions, targets) {',
-  '    throw new Error("Not implemented");',
-  '  }',
-  '',
-  '  backward(predictions, targets) {',
-  '    throw new Error("Not implemented");',
-  '  }',
-  '}',
-  '',
-  'class CrossEntropyLoss extends LossFunction {',
-  '  forward(predictions, targets) {',
-  '    const losses = [];',
-  '    for (let i = 0; i < predictions.length; i++) {',
-  '      const pred = predictions[i];',
-  '      const target = targets[i];',
-  '      const logSumExp = Math.log(pred.reduce((a, b) => a + Math.exp(b), 0));',
-  '      losses.push(-pred[target] + logSumExp);',
-  '    }',
-  '    return losses.reduce((a, b) => a + b, 0) / losses.length;',
-  '  }',
-  '',
-  '  backward(predictions, targets) {',
-  '    const grads = [];',
-  '    for (let i = 0; i < predictions.length; i++) {',
-  '      const pred = predictions[i];',
-  '      const target = targets[i];',
-  '      const expPred = pred.map(Math.exp);',
-  '      const sumExp = expPred.reduce((a, b) => a + b, 0);',
-  '      const grad = expPred.map(e => e / sumExp);',
-  '      grad[target] -= 1;',
-  '      grads.push(grad);',
-  '    }',
-  '    return grads;',
-  '  }',
-  '}',
-  '',
-  '// 初始化MOSS模型',
-  'const mossConfig = {',
-  '  modelPath: "./models/moss-16b",',
-  '  tokenizerPath: "./tokenizers/moss-tokenizer.json",',
-  '  hiddenSize: 4096,',
-  '  numHeads: 32,',
-  '  numLayers: 40,',
-  '  intermediateSize: 11008,',
-  '  dropoutRate: 0.1,',
-  '  maxSequenceLength: 8192,',
-  '  vocabSize: 65536,',
-  '  useCrossAttention: false',
-  '};',
-  '',
-  'const moss = new MossLLM(mossConfig);',
-  'const tokenizer = new Tokenizer(mossConfig.tokenizerPath);',
-  'const lossFn = new CrossEntropyLoss();',
-  '',
-  '// 示例使用',
-  'async function runMoss() {',
-  '  const prompt = "Explain quantum computing in simple terms.";',
-  '  console.log("Input prompt:", prompt);',
-  '',
-  '  const response = await moss.generate(prompt, {',
-  '    maxTokens: 200,',
-  '    temperature: 0.8,',
-  '    topP: 0.95,',
-  '    topK: 50',
-  '  });',
-  '',
-  '  console.log("MOSS Response:", response);',
-  '  return response;',
-  '}',
-  '',
-  'async function trainStep(model, batch, optimizer, lossFn) {',
-  '  optimizer.zeroGrad();',
-  '  const predictions = await model.forward(batch.inputs);',
-  '  const loss = lossFn.forward(predictions, batch.targets);',
-  '  const grads = lossFn.backward(predictions, batch.targets);',
-  '  optimizer.step();',
-  '  return loss;',
-  '}',
-  '',
-  'class DataLoader {',
-  '  constructor(dataset, batchSize, shuffle = true) {',
-  '    this.dataset = dataset;',
-  '    this.batchSize = batchSize;',
-  '    this.shuffle = shuffle;',
-  '    this.indices = Array.from({ length: dataset.length }, (_, i) => i);',
-  '    this.currentIndex = 0;',
-  '  }',
-  '',
-  '  reset() {',
-  '    this.currentIndex = 0;',
-  '    if (this.shuffle) {',
-  '      this.indices.sort(() => Math.random() - 0.5);',
-  '    }',
-  '  }',
-  '',
-  '  nextBatch() {',
-  '    if (this.currentIndex >= this.dataset.length) {',
-  '      return null;',
-  '    }',
-  '',
-  '    const batchIndices = this.indices.slice(',
-  '      this.currentIndex,',
-  '      this.currentIndex + this.batchSize',
-  '    );',
-  '    this.currentIndex += this.batchSize;',
-  '',
-  '    const batch = {',
-  '      inputs: [],',
-  '      targets: []',
-  '    };',
-  '',
-  '    for (const idx of batchIndices) {',
-  '      batch.inputs.push(this.dataset[idx].input);',
-  '      batch.targets.push(this.dataset[idx].target);',
-  '    }',
-  '',
-  '    return batch;',
-  '  }',
-  '',
-  '  hasNext() {',
-  '    return this.currentIndex < this.dataset.length;',
-  '  }',
-  '}',
-  '',
-  'async function trainModel(model, trainData, valData, config) {',
-  '  const optimizer = new AdamOptimizer(model.parameters(), config.learningRate);',
-  '  const lossFn = new CrossEntropyLoss();',
-  '  const trainLoader = new DataLoader(trainData, config.batchSize);',
-  '  const valLoader = new DataLoader(valData, config.batchSize, false);',
-  '',
-  '  for (let epoch = 0; epoch < config.numEpochs; epoch++) {',
-  '    console.log(`Epoch ${epoch + 1}/${config.numEpochs}`);',
-  '    trainLoader.reset();',
-  '    let totalTrainLoss = 0;',
-  '    let numTrainBatches = 0;',
-  '',
-  '    while (trainLoader.hasNext()) {',
-  '      const batch = trainLoader.nextBatch();',
-  '      const loss = await trainStep(model, batch, optimizer, lossFn);',
-  '      totalTrainLoss += loss;',
-  '      numTrainBatches++;',
-  '    }',
-  '',
-  '    const avgTrainLoss = totalTrainLoss / numTrainBatches;',
-  '    console.log(`  Train Loss: ${avgTrainLoss.toFixed(4)}`);',
-  '',
-  '    valLoader.reset();',
-  '    let totalValLoss = 0;',
-  '    let numValBatches = 0;',
-  '',
-  '    while (valLoader.hasNext()) {',
-  '      const batch = valLoader.nextBatch();',
-  '      const predictions = await model.forward(batch.inputs);',
-  '      const loss = lossFn.forward(predictions, batch.targets);',
-  '      totalValLoss += loss;',
-  '      numValBatches++;',
-  '    }',
-  '',
-  '    const avgValLoss = totalValLoss / numValBatches;',
-  '    console.log(`  Val Loss: ${avgValLoss.toFixed(4)}`);',
-  '  }',
-  '}',
-  '',
-  'class CheckpointManager {',
-  '  constructor(checkpointDir, maxCheckpoints = 5) {',
-  '    this.checkpointDir = checkpointDir;',
-  '    this.maxCheckpoints = maxCheckpoints;',
-  '    this.checkpoints = [];',
-  '  }',
-  '',
-  '  save(model, optimizer, epoch, loss) {',
-  '    const checkpoint = {',
-  '      modelState: model.getState(),',
-  '      optimizerState: optimizer.getState(),',
-  '      epoch: epoch,',
-  '      loss: loss,',
-  '      timestamp: Date.now()',
-  '    };',
-  '',
-  '    const filename = `checkpoint_epoch_${epoch}.pt`;',
-  '    this.checkpoints.push({ filename, timestamp: checkpoint.timestamp });',
-  '',
-  '    if (this.checkpoints.length > this.maxCheckpoints) {',
-  '      const oldest = this.checkpoints.shift();',
-  '      this.deleteCheckpoint(oldest.filename);',
-  '    }',
-  '',
-  '    return filename;',
-  '  }',
-  '',
-  '  load(filename) {',
-  '    const checkpoint = this.readCheckpoint(filename);',
-  '    return checkpoint;',
-  '  }',
-  '',
-  '  getLatest() {',
-  '    if (this.checkpoints.length === 0) return null;',
-  '    return this.checkpoints[this.checkpoints.length - 1];',
-  '  }',
-  '',
-  '  deleteCheckpoint(filename) {',
-  '    // 删除旧检查点',
-  '  }',
-  '',
-  '  readCheckpoint(filename) {',
-  '    // 读取检查点文件',
-  '    return null;',
-  '  }',
-  '}',
-  '',
-  '// 系统初始化',
-  'console.log("Initializing MOSS artificial intelligence system...");',
-  'console.log("Loading tokenizer...");',
-  'console.log("Loading model weights...");',
-  'console.log("Configuring optimization pipeline...");',
-  'console.log("System ready.");'
+  '// MOSS System v4.0.0 Initializing...',
+  'const config = { hiddenSize: 4096, numHeads: 32, numLayers: 40, vocabSize: 65536 };',
+  'const moss = new MossLLM(config);',
+  'console.log("MOSS AI System ready.");',
 ];
 
-// 配置常量
 const FONT_SIZE = 14;
 const LINE_HEIGHT = FONT_SIZE + 4;
 const PADDING_X = 20;
 const PADDING_TOP = 40;
-const LINE_ADD_INTERVAL = 80; // 每80ms添加新行
-const LINES_PER_ADD = 3; // 每次添加3行
+const LINE_ADD_INTERVAL = 120;
+const LINES_PER_ADD = 2;
+const DROP_SPEED = 0.3;
+const MAX_DISPLAYED_LINES = 60;
 
 export const CodeRain = memo(function CodeRain() {
   const canvasRef = useRef<HTMLCanvasElement>(null);
-  
-  // 使用 ref 存储所有可变状态，避免触发 re-render
+
   const stateRef = useRef({
     currentLineIndex: 0,
     displayedLines: [] as string[],
     drops: [] as number[],
     lastLineAddTime: 0,
     scrollOffset: 0,
-    isInitialized: false,
   });
 
   useEffect(() => {
@@ -735,131 +150,110 @@ export const CodeRain = memo(function CodeRain() {
 
     let animationFrameId: number;
     const state = stateRef.current;
-    
-    // 矩阵雨字符集
-    const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789!@#$%^&*()_+-=[]{}|;:,.<>?/\\~`'.split('');
 
-    // 设置canvas尺寸并初始化drops数组
+    const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789!@#$%^&*()_+-=[]{}|;:,.<>?/~'.split('');
+
     const resizeCanvas = () => {
       canvas.width = window.innerWidth * 0.5;
       canvas.height = window.innerHeight;
-      
-      // 重新初始化drops数组
       const columns = Math.floor(canvas.width / FONT_SIZE);
-      state.drops = new Array(columns).fill(0).map(() => Math.random() * canvas.height / FONT_SIZE);
+      if (state.drops.length !== columns) {
+        state.drops = new Array(columns).fill(0).map(() => Math.random() * canvas.height / FONT_SIZE);
+      }
     };
-    
+
     resizeCanvas();
     window.addEventListener('resize', resizeCanvas);
 
-    // 主渲染循环
     const render = (timestamp: number) => {
       if (!ctx || !canvas) return;
 
-      // 控制代码行添加速度
       if (timestamp - state.lastLineAddTime >= LINE_ADD_INTERVAL) {
         state.lastLineAddTime = timestamp;
-        
-        // 添加新的代码行
+
         for (let i = 0; i < LINES_PER_ADD; i++) {
           if (state.currentLineIndex < mossCodeSnippets.length) {
             state.displayedLines.push(mossCodeSnippets[state.currentLineIndex]);
             state.currentLineIndex++;
           } else {
-            // 循环播放：重置到开头
             state.currentLineIndex = 0;
             state.displayedLines = [];
             state.scrollOffset = 0;
           }
         }
-        
-        // 计算滚动偏移（终端滚动效果）
+
+        if (state.displayedLines.length > MAX_DISPLAYED_LINES) {
+          const excess = state.displayedLines.length - MAX_DISPLAYED_LINES;
+          state.displayedLines.splice(0, excess);
+        }
+
         const totalContentHeight = state.displayedLines.length * LINE_HEIGHT + PADDING_TOP;
         const maxVisibleHeight = canvas.height - PADDING_TOP;
-        
         if (totalContentHeight > maxVisibleHeight) {
-          // 内容超出可视区域，向上滚动使最新行可见
           state.scrollOffset = totalContentHeight - maxVisibleHeight;
         }
       }
 
-      // 绘制背景（半透明叠加创建拖尾效果）
-      ctx.fillStyle = 'rgba(10, 14, 23, 0.1)';
+      ctx.fillStyle = 'rgba(10, 14, 23, 0.15)';
       ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-      // 绘制矩阵雨背景
       ctx.font = `${FONT_SIZE}px Consolas, Monaco, monospace`;
-      
+
       for (let i = 0; i < state.drops.length; i++) {
         const char = chars[Math.floor(Math.random() * chars.length)];
         const x = i * FONT_SIZE;
         const y = state.drops[i] * FONT_SIZE;
 
-        // 淡色背景字符
-        ctx.fillStyle = 'rgba(100, 255, 218, 0.08)';
+        ctx.fillStyle = 'rgba(100, 255, 218, 0.06)';
         ctx.fillText(char, x, y);
 
-        // 下落逻辑
         if (y > canvas.height && Math.random() > 0.975) {
           state.drops[i] = 0;
         }
-        state.drops[i] += 0.5; // 缓慢下落
+        state.drops[i] += DROP_SPEED;
       }
 
-      // 绘制代码行
       const visibleStartY = PADDING_TOP - state.scrollOffset;
-      
-      state.displayedLines.forEach((line, index) => {
+      const len = state.displayedLines.length;
+
+      for (let index = 0; index < len; index++) {
+        const line = state.displayedLines[index];
         const y = visibleStartY + index * LINE_HEIGHT;
-        
-        // 只绘制可见区域内的行
-        if (y < -LINE_HEIGHT || y > canvas.height + LINE_HEIGHT) return;
-        
-        // 计算行的淡入效果（新行更亮）
-        const isRecentLine = index >= state.displayedLines.length - LINES_PER_ADD * 3;
-        const lineAge = state.displayedLines.length - index;
-        const fadeAlpha = Math.max(0.4, Math.min(1, 1 - (lineAge - LINES_PER_ADD * 3) * 0.01));
-        
-        // 为最新添加的行创建发光效果
+        if (y < -LINE_HEIGHT || y > canvas.height + LINE_HEIGHT) continue;
+
+        const isRecentLine = index >= len - LINES_PER_ADD * 3;
+        const lineAge = len - index;
+        const fadeAlpha = Math.max(0.35, Math.min(0.9, 1 - (lineAge - LINES_PER_ADD * 3) * 0.008));
+
         if (isRecentLine) {
-          ctx.shadowColor = 'rgba(100, 255, 218, 0.5)';
-          ctx.shadowBlur = 8;
+          ctx.shadowColor = 'rgba(100, 255, 218, 0.4)';
+          ctx.shadowBlur = 6;
         } else {
           ctx.shadowBlur = 0;
         }
 
-        // 根据行的"年龄"设置颜色渐变
-        if (isRecentLine) {
-          ctx.fillStyle = `rgba(100, 255, 218, ${fadeAlpha})`;
-        } else {
-          ctx.fillStyle = `rgba(100, 255, 218, ${fadeAlpha * 0.7})`;
-        }
-        
+        ctx.fillStyle = `rgba(100, 255, 218, ${isRecentLine ? fadeAlpha : fadeAlpha * 0.6})`;
         ctx.fillText(line, PADDING_X, y);
-      });
+      }
 
-      // 重置阴影
       ctx.shadowBlur = 0;
 
-      // 继续动画循环
       animationFrameId = requestAnimationFrame(render);
     };
 
-    // 启动动画
     animationFrameId = requestAnimationFrame(render);
 
-    // 清理函数
     return () => {
       cancelAnimationFrame(animationFrameId);
       window.removeEventListener('resize', resizeCanvas);
     };
-  }, []); // 空依赖数组，只在挂载时运行一次
+  }, []);
 
   return (
     <canvas
       ref={canvasRef}
       className="absolute left-0 top-0 h-full z-0"
-      style={{ width: '50%', opacity: 0.9 }}
+      style={{ width: '50%', opacity: 0.85 }}
     />
   );
 });
