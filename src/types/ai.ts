@@ -5,7 +5,8 @@ export type DecisionType =
   | 'risk_assessment'
   | 'task_priority'
   | 'system_maintenance'
-  | 'anomaly_detection';
+  | 'anomaly_detection'
+  | 'energy_optimization';
 
 export type DecisionStatus = 'pending' | 'approved' | 'rejected' | 'executed';
 

@@ -85,7 +85,7 @@ export const TaskScheduler = memo(function TaskScheduler() {
       const tasks = await getTasks();
       setTasks(tasks);
       updateStats();
-    }, 2000);
+    }, 5000);
 
     return () => clearInterval(interval);
   }, [setTasks, updateStats]);

@@ -70,9 +70,9 @@ export const BootSequence = memo(function BootSequence() {
         setProgress((prev) => {
           const target = 78 + Math.random() * 10;
           if (prev >= target) return target;
-          return prev + 100 / 150;
+          return prev + 100 / 75;
         });
-      }, 100);
+      }, 200);
 
       return () => {
         timeouts.forEach(clearTimeout);
@@ -97,9 +97,9 @@ export const BootSequence = memo(function BootSequence() {
     const progressInterval = setInterval(() => {
       setProgress((prev) => {
         if (prev >= 100) return 100;
-        return prev + 100 / 150;
+        return prev + 100 / 75;
       });
-    }, 100);
+    }, 200);
 
     return () => {
       timeouts.forEach(clearTimeout);

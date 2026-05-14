@@ -55,7 +55,7 @@ export const SimulationPanel = memo(function SimulationPanel() {
       }
     };
 
-    const interval = setInterval(checkActiveScenario, 2000);
+    const interval = setInterval(checkActiveScenario, 5000);
     return () => clearInterval(interval);
   }, [activeScenario]);
 

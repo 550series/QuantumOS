@@ -82,7 +82,7 @@ export const SystemMonitor = memo(function SystemMonitor() {
     };
 
     generateSystemData();
-    const interval = setInterval(generateSystemData, 1000);
+    const interval = setInterval(generateSystemData, 2000);
     return () => clearInterval(interval);
   }, [isMonitoring, status, updateStatus]);
 

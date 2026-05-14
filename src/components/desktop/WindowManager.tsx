@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useRef } from 'react';
 import { motion } from 'framer-motion';
 import { useSystemStore } from '@/stores';
 import { appConfig, type AppType } from './appConfig';
@@ -9,85 +9,74 @@ export const WindowManager: React.FC = () => {
   const { windows, activeWindowId, focusWindow, minimizeWindow, maximizeWindow, closeWindow, updateWindowPosition, updateWindowSize } =
     useSystemStore();
 
-  const [dragging, setDragging] = useState<{ windowId: string; startX: number; startY: number; startPos: { x: number; y: number } } | null>(null);
-  const [resizing, setResizing] = useState<{ windowId: string; startX: number; startY: number; startSize: { width: number; height: number } } | null>(null);
+  const dragRef = useRef<{ windowId: string; startX: number; startY: number; startPos: { x: number; y: number } } | null>(null);
+  const resizeRef = useRef<{ windowId: string; startX: number; startY: number; startSize: { width: number; height: number } } | null>(null);
+  const isDraggingRef = useRef(false);
+  const isResizingRef = useRef(false);
 
-  const handleMouseDown = (windowId: string, e: React.MouseEvent) => {
+  const handleMouseDown = useCallback((windowId: string, e: React.MouseEvent) => {
     e.stopPropagation();
     const win = windows.find(w => w.id === windowId);
     if (win) {
-      setDragging({
+      dragRef.current = {
         windowId,
         startX: e.clientX,
         startY: e.clientY,
         startPos: { ...win.position }
-      });
+      };
+      isDraggingRef.current = true;
       focusWindow(windowId);
     }
-  };
+  }, [windows, focusWindow]);
 
-  const handleMouseMove = useCallback((e: MouseEvent) => {
-    if (!dragging) return;
-    const deltaX = e.clientX - dragging.startX;
-    const deltaY = e.clientY - dragging.startY;
-    updateWindowPosition(dragging.windowId, {
-      x: dragging.startPos.x + deltaX,
-      y: dragging.startPos.y + deltaY
-    });
-  }, [dragging, updateWindowPosition]);
-
-  const handleMouseUp = useCallback(() => {
-    setDragging(null);
-  }, []);
-
-  const handleResizeStart = (windowId: string, e: React.MouseEvent) => {
+  const handleResizeStart = useCallback((windowId: string, e: React.MouseEvent) => {
     e.stopPropagation();
     const win = windows.find(w => w.id === windowId);
     if (win) {
-      setResizing({
+      resizeRef.current = {
         windowId,
         startX: e.clientX,
         startY: e.clientY,
         startSize: { ...win.size }
-      });
+      };
+      isResizingRef.current = true;
       focusWindow(windowId);
     }
-  };
-
-  const handleResizeMove = useCallback((e: MouseEvent) => {
-    if (!resizing) return;
-    const deltaX = e.clientX - resizing.startX;
-    const deltaY = e.clientY - resizing.startY;
-    const newWidth = Math.max(300, resizing.startSize.width + deltaX);
-    const newHeight = Math.max(200, resizing.startSize.height + deltaY);
-    updateWindowSize(resizing.windowId, { width: newWidth, height: newHeight });
-  }, [resizing, updateWindowSize]);
-
-  const handleResizeEnd = useCallback(() => {
-    setResizing(null);
-  }, []);
+  }, [windows, focusWindow]);
 
   useEffect(() => {
-    if (dragging) {
-      document.addEventListener('mousemove', handleMouseMove);
-      document.addEventListener('mouseup', handleMouseUp);
-      return () => {
-        document.removeEventListener('mousemove', handleMouseMove);
-        document.removeEventListener('mouseup', handleMouseUp);
-      };
-    }
-  }, [dragging, handleMouseMove, handleMouseUp]);
+    const handleMouseMove = (e: MouseEvent) => {
+      if (isDraggingRef.current && dragRef.current) {
+        const deltaX = e.clientX - dragRef.current.startX;
+        const deltaY = e.clientY - dragRef.current.startY;
+        updateWindowPosition(dragRef.current.windowId, {
+          x: dragRef.current.startPos.x + deltaX,
+          y: dragRef.current.startPos.y + deltaY
+        });
+      }
+      if (isResizingRef.current && resizeRef.current) {
+        const deltaX = e.clientX - resizeRef.current.startX;
+        const deltaY = e.clientY - resizeRef.current.startY;
+        const newWidth = Math.max(300, resizeRef.current.startSize.width + deltaX);
+        const newHeight = Math.max(200, resizeRef.current.startSize.height + deltaY);
+        updateWindowSize(resizeRef.current.windowId, { width: newWidth, height: newHeight });
+      }
+    };
 
-  useEffect(() => {
-    if (resizing) {
-      document.addEventListener('mousemove', handleResizeMove);
-      document.addEventListener('mouseup', handleResizeEnd);
-      return () => {
-        document.removeEventListener('mousemove', handleResizeMove);
-        document.removeEventListener('mouseup', handleResizeEnd);
-      };
-    }
-  }, [resizing, handleResizeMove, handleResizeEnd]);
+    const handleMouseUp = () => {
+      isDraggingRef.current = false;
+      dragRef.current = null;
+      isResizingRef.current = false;
+      resizeRef.current = null;
+    };
+
+    document.addEventListener('mousemove', handleMouseMove);
+    document.addEventListener('mouseup', handleMouseUp);
+    return () => {
+      document.removeEventListener('mousemove', handleMouseMove);
+      document.removeEventListener('mouseup', handleMouseUp);
+    };
+  }, [updateWindowPosition, updateWindowSize]);
 
   return (
     <>
