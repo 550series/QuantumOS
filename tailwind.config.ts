@@ -32,8 +32,8 @@ const config: Config = {
         },
       },
       fontFamily: {
-        mono: ['JetBrains Mono', 'Consolas', 'Monaco', 'monospace'],
-        display: ['Orbitron', 'sans-serif'],
+        mono: ['var(--font-mono)', 'Consolas', 'Monaco', 'monospace'],
+        display: ['var(--font-display)', 'sans-serif'],
       },
       boxShadow: {
         'neon': '0 0 20px rgba(0, 240, 255, 0.5)',

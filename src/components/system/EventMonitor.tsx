@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useEffect, useState } from 'react';
+import React, { memo, useEffect, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Panel } from '@/components/ui/Panel/Panel';
 import { Button } from '@/components/ui/Button/Button';
@@ -40,7 +40,7 @@ const severityLabels = {
   critical: '严重',
 };
 
-export const EventMonitor: React.FC = () => {
+export const EventMonitor = memo(function EventMonitor() {
   const [events, setEvents] = useState<SystemEvent[]>([]);
   const [isEventSystemRunning, setIsEventSystemRunning] = useState(false);
   const [selectedEvent, setSelectedEvent] = useState<SystemEvent | null>(null);
@@ -279,4 +279,4 @@ export const EventMonitor: React.FC = () => {
       </div>
     </div>
   );
-};
+});

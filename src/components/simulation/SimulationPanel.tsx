@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useEffect, useState } from 'react';
+import React, { memo, useEffect, useState } from 'react';
 import { motion } from 'framer-motion';
 import { Panel } from '@/components/ui/Panel/Panel';
 import { Button } from '@/components/ui/Button/Button';
@@ -31,7 +31,7 @@ const scenarioColors = {
   optimization: 'text-cyber-green',
 };
 
-export const SimulationPanel: React.FC = () => {
+export const SimulationPanel = memo(function SimulationPanel() {
   const [isSimulationRunning, setIsSimulationRunning] = useState(false);
   const [activeScenario, setActiveScenario] = useState(SimulationSystem.getActiveScenario());
   const [scenarioHistory, setScenarioHistory] = useState<Array<{
@@ -258,4 +258,4 @@ export const SimulationPanel: React.FC = () => {
       </Panel>
     </div>
   );
-};
+});

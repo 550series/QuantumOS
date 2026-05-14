@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useEffect, useState } from 'react';
+import React, { memo, useEffect, useState } from 'react';
 import { motion } from 'framer-motion';
 import { useTaskStore } from '@/stores';
 import {
@@ -53,7 +53,7 @@ const priorityColors = {
   critical: 'text-cyber-red',
 };
 
-export const TaskScheduler: React.FC = () => {
+export const TaskScheduler = memo(function TaskScheduler() {
   const {
     tasks,
     stats,
@@ -298,4 +298,4 @@ export const TaskScheduler: React.FC = () => {
       </div>
     </Panel>
   );
-};
+});

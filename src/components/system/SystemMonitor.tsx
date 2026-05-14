@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useEffect, useState, useRef } from 'react';
+import React, { memo, useEffect, useState, useRef } from 'react';
 import { motion } from 'framer-motion';
 import { Panel } from '@/components/ui/Panel/Panel';
 import { Button } from '@/components/ui/Button/Button';
@@ -26,7 +26,7 @@ interface SystemHistoryData {
   networkUpload: number;
 }
 
-export const SystemMonitor: React.FC = () => {
+export const SystemMonitor = memo(function SystemMonitor() {
   const { status, updateStatus } = useSystemStore();
   const [isMonitoring, setIsMonitoring] = useState(true);
   const [historyData, setHistoryData] = useState<SystemHistoryData[]>([]);
@@ -345,4 +345,4 @@ export const SystemMonitor: React.FC = () => {
       </Panel>
     </div>
   );
-};
+});

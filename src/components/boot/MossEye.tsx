@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useRef, useMemo } from 'react';
+import React, { memo, useRef, useMemo } from 'react';
 import { Canvas, useFrame } from '@react-three/fiber';
 import { OrbitControls, Line } from '@react-three/drei';
 import * as THREE from 'three';
@@ -94,7 +94,7 @@ const MossEyeCore: React.FC = () => {
   );
 };
 
-export const MossEye: React.FC = () => {
+export const MossEye = memo(function MossEye() {
   return (
     <div className="w-64 h-64">
       <Canvas camera={{ position: [0, 0, 3], fov: 50 }}>
@@ -103,4 +103,4 @@ export const MossEye: React.FC = () => {
       </Canvas>
     </div>
   );
-};
+});

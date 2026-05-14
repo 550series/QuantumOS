@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useEffect, useState } from 'react';
+import React, { memo, useEffect, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useAIStore } from '@/stores';
 import {
@@ -43,7 +43,7 @@ const urgencyColors = {
   critical: 'text-cyber-red animate-pulse',
 };
 
-export const AIDecisionCenter: React.FC = () => {
+export const AIDecisionCenter = memo(function AIDecisionCenter() {
   const {
     decisions,
     messages,
@@ -373,4 +373,4 @@ export const AIDecisionCenter: React.FC = () => {
       </div>
     </div>
   );
-};
+});

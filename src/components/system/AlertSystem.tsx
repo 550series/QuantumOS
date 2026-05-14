@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useEffect, useState } from 'react';
+import React, { memo, useEffect, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Panel, Button } from '@/components/ui';
 import {
@@ -30,7 +30,7 @@ const severityConfig = {
   critical: { icon: <Zap className="w-5 h-5" />, color: 'text-cyber-red', bg: 'bg-cyber-red/20', border: 'border-cyber-red/50' },
 };
 
-export const AlertSystem: React.FC = () => {
+export const AlertSystem = memo(function AlertSystem() {
   const [alerts, setAlerts] = useState<Alert[]>([]);
   const [activeAlerts, setActiveAlerts] = useState<Alert[]>([]);
   const [selectedAlert, setSelectedAlert] = useState<Alert | null>(null);
@@ -271,4 +271,4 @@ export const AlertSystem: React.FC = () => {
       </AnimatePresence>
     </>
   );
-};
+});

@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useEffect, useState } from 'react';
+import React, { memo, useEffect, useState } from 'react';
 
 interface SystemMetrics {
   cpuUsage: number;
@@ -11,7 +11,7 @@ interface SystemMetrics {
   temperature: number;
 }
 
-export const SystemStatus: React.FC = () => {
+export const SystemStatus = memo(function SystemStatus() {
   const [metrics, setMetrics] = useState<SystemMetrics>({
     cpuUsage: 0,
     memoryUsage: 0,
@@ -155,4 +155,4 @@ export const SystemStatus: React.FC = () => {
       </div>
     </div>
   );
-};
+});

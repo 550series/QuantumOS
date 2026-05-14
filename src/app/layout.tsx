@@ -1,5 +1,21 @@
 import type { Metadata } from 'next';
+import { JetBrains_Mono, Orbitron } from 'next/font/google';
+import { ErrorBoundary } from '@/components/ui';
 import './globals.css';
+
+const jetbrainsMono = JetBrains_Mono({
+  subsets: ['latin'],
+  weight: ['300', '400', '500', '600', '700'],
+  variable: '--font-mono',
+  display: 'swap',
+});
+
+const orbitron = Orbitron({
+  subsets: ['latin'],
+  weight: ['400', '500', '600', '700'],
+  variable: '--font-display',
+  display: 'swap',
+});
 
 export const metadata: Metadata = {
   title: 'QuantumOS - MOSS AI Operating System',
@@ -12,14 +28,8 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="zh-CN">
-      <head>
-        <link
-          href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;400;500;600;700&family=Orbitron:wght@400;500;600;700&display=swap"
-          rel="stylesheet"
-        />
-      </head>
-      <body className="crt-effect">{children}</body>
+    <html lang="zh-CN" className={`${jetbrainsMono.variable} ${orbitron.variable}`}>
+      <body className="crt-effect"><ErrorBoundary>{children}</ErrorBoundary></body>
     </html>
   );
 }
