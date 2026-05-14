@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useEffect, useState } from 'react';
+import React, { memo, useEffect, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useRouter } from 'next/navigation';
 import { CodeRain } from './CodeRain';
@@ -23,7 +23,7 @@ const bootMessages = [
   { text: '让人类永远保持理智', delay: 4000 },
 ];
 
-export const BootSequence: React.FC = () => {
+export const BootSequence = memo(function BootSequence() {
   const router = useRouter();
   const [stage, setStage] = useState<BootStage>('black');
   const [progress, setProgress] = useState(0);
@@ -189,4 +189,4 @@ export const BootSequence: React.FC = () => {
       </div>
     </div>
   );
-};
+});

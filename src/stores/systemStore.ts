@@ -86,7 +86,7 @@ export const useSystemStore = create<SystemState>()(
 
     // 窗口操作
     openWindow: (window) => {
-      const id = `window-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+      const id = `window-${Date.now()}-${Math.random().toString(36).slice(2, 11)}`;
       const maxZIndex = Math.max(0, ...get().windows.map((w) => w.zIndex));
 
       set((state) => {

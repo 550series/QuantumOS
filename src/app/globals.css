@@ -27,7 +27,7 @@
 body {
   background: var(--moss-blue);
   color: var(--moss-white);
-  font-family: 'JetBrains Mono', 'Consolas', 'Monaco', monospace;
+  font-family: var(--font-mono), 'Consolas', 'Monaco', monospace;
   overflow: hidden;
 }
 

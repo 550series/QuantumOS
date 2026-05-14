@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useEffect, useState } from 'react';
+import React, { memo, useEffect, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Panel, Button } from '@/components/ui';
 import {
@@ -37,7 +37,7 @@ const categoryNames = {
   security: '安全',
 };
 
-export const LogViewer: React.FC = () => {
+export const LogViewer = memo(function LogViewer() {
   const [logs, setLogs] = useState<LogEntry[]>([]);
   const [filteredLogs, setFilteredLogs] = useState<LogEntry[]>([]);
   const [loading, setLoading] = useState(false);
@@ -229,4 +229,4 @@ export const LogViewer: React.FC = () => {
       </div>
     </Panel>
   );
-};
+});

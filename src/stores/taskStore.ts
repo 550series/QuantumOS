@@ -3,41 +3,26 @@ import { immer } from 'zustand/middleware/immer';
 import type { Task, TaskFilter, TaskSort, TaskStats } from '@/types';
 
 interface TaskState {
-  // 任务数据
   tasks: Task[];
   selectedTaskId: string | null;
-
-  // 统计信息
   stats: TaskStats;
-
-  // 过滤和排序
   filter: TaskFilter;
   sort: TaskSort;
-
-  // 操作状态
   loading: boolean;
   error: string | null;
-
-  // 操作方法
   setTasks: (tasks: Task[]) => void;
   addTask: (task: Task) => void;
   updateTask: (id: string, updates: Partial<Task>) => void;
   deleteTask: (id: string) => void;
-
-  // 选择操作
   selectTask: (id: string | null) => void;
-
-  // 过滤和排序
   setFilter: (filter: TaskFilter) => void;
   setSort: (sort: TaskSort) => void;
-
-  // 统计更新
   updateStats: () => void;
-
-  // 状态操作
   setLoading: (loading: boolean) => void;
   setError: (error: string | null) => void;
 }
+
+type TaskStateDraft = TaskState & { stats: TaskStats };
 
 export const useTaskStore = create<TaskState>()(
   immer((set, get) => ({
@@ -124,9 +109,8 @@ export const useTaskStore = create<TaskState>()(
   }))
 );
 
-// 内部统计更新函数
-function updateStatsInternal(state: any) {
-  const tasks = state.tasks as Task[];
+function updateStatsInternal(state: TaskStateDraft) {
+  const tasks = state.tasks;
   state.stats = {
     total: tasks.length,
     pending: tasks.filter((t) => t.status === 'pending').length,

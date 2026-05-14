@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useEffect, useRef } from 'react';
+import React, { memo, useEffect, useRef } from 'react';
 
 // MOSS相关的真实代码片段
 const mossCodeSnippets = [
@@ -713,7 +713,7 @@ const PADDING_TOP = 40;
 const LINE_ADD_INTERVAL = 80; // 每80ms添加新行
 const LINES_PER_ADD = 3; // 每次添加3行
 
-export const CodeRain: React.FC = () => {
+export const CodeRain = memo(function CodeRain() {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   
   // 使用 ref 存储所有可变状态，避免触发 re-render
@@ -862,4 +862,4 @@ export const CodeRain: React.FC = () => {
       style={{ width: '50%', opacity: 0.9 }}
     />
   );
-};
+});

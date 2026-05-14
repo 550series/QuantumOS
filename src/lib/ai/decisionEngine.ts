@@ -56,8 +56,13 @@ const mossMessages = {
   ],
 };
 
+type DecisionRule = {
+  condition: (input: DecisionInput) => boolean;
+  generate: (input: DecisionInput) => Recommendation;
+};
+
 // 决策规则库
-const decisionRules = {
+const decisionRules: Record<string, DecisionRule> = {
   resource_optimization: {
     condition: (input: DecisionInput) => {
       const cpu = (input.data.cpu as number) || 0;
@@ -116,13 +121,13 @@ const decisionRules = {
   },
   task_priority: {
     condition: (input: DecisionInput) => {
-      const tasks = input.data.tasks as any[];
-      return tasks.some((t) => t.priority === 'critical' && t.status === 'pending');
+      const tasks = input.data.tasks as Array<{ id: string; priority: string; status: string }> | undefined;
+      return tasks ? tasks.some((t) => t.priority === 'critical' && t.status === 'pending') : false;
     },
     generate: (input: DecisionInput): Recommendation => ({
       action: 'prioritize_tasks',
       parameters: {
-        taskIds: (input.data.tasks as any[])
+        taskIds: ((input.data.tasks as Array<{ id: string; priority: string; status: string }> | undefined) || [])
           .filter((t) => t.priority === 'critical')
           .map((t) => t.id),
       },
@@ -301,7 +306,7 @@ export class MOSSDecisionEngine {
       return null;
     }
 
-    const recommendation = (decisionRules as any)[decisionType].generate(input);
+    const recommendation = decisionRules[decisionType].generate(input);
     const reasoning = this.generateReasoning(input, recommendation);
 
     const decision: AIDecision = {
