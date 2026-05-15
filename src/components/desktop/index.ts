@@ -3,3 +3,4 @@ export type { AppType } from './appConfig';
 export { DesktopIcons } from './DesktopIcons';
 export { WindowManager } from './WindowManager';
 export { Taskbar } from './Taskbar';
+export { ContextMenu } from './ContextMenu';

@@ -1,11 +1,25 @@
 import React from 'react';
-import { Activity, Brain, Terminal, Bell, Settings, AlertCircle } from 'lucide-react';
+import { Activity, Brain, Terminal, Bell, Settings, AlertCircle, FolderOpen } from 'lucide-react';
 import { TaskScheduler } from '@/components/task-scheduler';
 import { AIDecisionCenter } from '@/components/ai-system';
-import { LogViewer, AlertSystem, EventMonitor, SystemMonitor } from '@/components/system';
+import { LogViewer, AlertSystem, EventMonitor, SystemMonitor, NotificationCenter } from '@/components/system';
 import { SimulationPanel } from '@/components/simulation';
+import { MossTerminal } from '@/components/terminal';
+import { FileExplorer } from '@/components/file-explorer';
+import { SettingsPanel } from '@/components/settings/SettingsPanel';
 
-export type AppType = 'task-scheduler' | 'ai-center' | 'log-viewer' | 'alert-system' | 'settings' | 'simulation' | 'event-monitor' | 'system-monitor';
+export type AppType =
+  | 'task-scheduler'
+  | 'ai-center'
+  | 'log-viewer'
+  | 'alert-system'
+  | 'settings'
+  | 'simulation'
+  | 'event-monitor'
+  | 'system-monitor'
+  | 'notification-center'
+  | 'moss-terminal'
+  | 'file-explorer';
 
 export interface AppConfigEntry {
   title: string;
@@ -13,38 +27,6 @@ export interface AppConfigEntry {
   component: React.ComponentType;
   defaultSize: { width: number; height: number };
 }
-
-const SettingsComponent = () => (
-  <div className="p-4">
-    <h2 className="text-xl font-mono text-moss-cyan mb-4">系统设置</h2>
-    <div className="space-y-4">
-      <div className="p-3 border border-moss-cyan/30 rounded">
-        <h3 className="text-sm font-mono text-moss-white mb-2">外观设置</h3>
-        <div className="flex items-center gap-2">
-          <span className="text-xs text-moss-white/60">主题:</span>
-          <select className="bg-dark-900 border border-moss-cyan/30 text-moss-white text-xs px-2 py-1 rounded">
-            <option>深色主题</option>
-            <option>浅色主题</option>
-          </select>
-        </div>
-      </div>
-      <div className="p-3 border border-moss-cyan/30 rounded">
-        <h3 className="text-sm font-mono text-moss-white mb-2">系统设置</h3>
-        <div className="flex items-center gap-2">
-          <span className="text-xs text-moss-white/60">自动更新:</span>
-          <input type="checkbox" className="accent-moss-cyan" />
-        </div>
-      </div>
-      <div className="p-3 border border-moss-cyan/30 rounded">
-        <h3 className="text-sm font-mono text-moss-white mb-2">网络设置</h3>
-        <div className="flex items-center gap-2">
-          <span className="text-xs text-moss-white/60">网络连接:</span>
-          <span className="text-xs text-moss-green">已连接</span>
-        </div>
-      </div>
-    </div>
-  </div>
-);
 
 export const appConfig: Record<AppType, AppConfigEntry> = {
   'task-scheduler': {
@@ -74,7 +56,7 @@ export const appConfig: Record<AppType, AppConfigEntry> = {
   'settings': {
     title: '系统设置',
     icon: <Settings className="w-5 h-5" />,
-    component: SettingsComponent,
+    component: SettingsPanel,
     defaultSize: { width: 600, height: 500 },
   },
   'simulation': {
@@ -94,5 +76,23 @@ export const appConfig: Record<AppType, AppConfigEntry> = {
     icon: <Activity className="w-5 h-5" />,
     component: SystemMonitor,
     defaultSize: { width: 1000, height: 600 },
+  },
+  'notification-center': {
+    title: '通知中心',
+    icon: <Bell className="w-5 h-5" />,
+    component: NotificationCenter,
+    defaultSize: { width: 450, height: 500 },
+  },
+  'moss-terminal': {
+    title: 'MOSS终端',
+    icon: <Terminal className="w-5 h-5" />,
+    component: MossTerminal,
+    defaultSize: { width: 700, height: 500 },
+  },
+  'file-explorer': {
+    title: '文件浏览器',
+    icon: <FolderOpen className="w-5 h-5" />,
+    component: FileExplorer,
+    defaultSize: { width: 700, height: 500 },
   },
 };
