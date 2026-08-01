@@ -234,23 +234,32 @@ export async function simulateTaskExecution(
   taskId: string,
   onProgress?: (progress: number) => void
 ): Promise<void> {
-  const task = await getTask(taskId);
-  if (!task) return;
+  try {
+    const task = await getTask(taskId);
+    if (!task) return;
 
-  await startTask(taskId);
+    await startTask(taskId);
 
-  // 模拟进度更新
-  for (let progress = 0; progress <= 100; progress += 10) {
-    await new Promise((resolve) => setTimeout(resolve, 500));
-    await updateTask(taskId, { progress });
-    if (onProgress) onProgress(progress);
-  }
+    // 模拟进度更新
+    for (let progress = 0; progress <= 100; progress += 10) {
+      await new Promise((resolve) => setTimeout(resolve, 500));
+      await updateTask(taskId, { progress });
+      if (onProgress) onProgress(progress);
+    }
 
-  // 模拟成功或失败
-  const success = Math.random() > 0.2; // 80%成功率
-  if (success) {
-    await completeTask(taskId, { success: true, output: '任务执行成功' });
-  } else {
-    await failTask(taskId, '模拟任务执行失败');
+    // 模拟成功或失败
+    const success = Math.random() > 0.2; // 80%成功率
+    if (success) {
+      await completeTask(taskId, { success: true, output: '任务执行成功' });
+    } else {
+      await failTask(taskId, '模拟任务执行失败');
+    }
+  } catch (err) {
+    // 进度更新/状态变更失败时，尝试将任务标记为失败，避免抛出未捕获异常
+    try {
+      await failTask(taskId, (err as Error)?.message || '任务执行异常');
+    } catch {
+      // 标记失败也失败则忽略，避免掩盖原始错误
+    }
   }
 }

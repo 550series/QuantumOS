@@ -2,6 +2,7 @@ import { v4 as uuidv4 } from 'uuid';
 import { useSystemStore } from '@/stores';
 import { useAIStore } from '@/stores';
 import { useTaskStore } from '@/stores';
+import { MOSSDecisionEngine } from '@/lib/ai/decisionEngine';
 import type { Task } from '@/types';
 
 // 事件类型
@@ -140,84 +141,98 @@ export class EventSystem {
   }
 
   // 生成随机事件
-  private static generateRandomEvent() {
-    // 根据概率选择事件
-    const weightedEvents = eventTemplates.flatMap(template => {
-      const copies = Math.floor(template.probability / 2); // 每2%概率生成一个副本
-      return Array(copies).fill(template);
-    });
+  private static async generateRandomEvent() {
+    try {
+      // 根据概率选择事件
+      const weightedEvents = eventTemplates.flatMap(template => {
+        const copies = Math.floor(template.probability / 2); // 每2%概率生成一个副本
+        return Array(copies).fill(template);
+      });
 
-    if (weightedEvents.length === 0) {
-      return;
-    }
+      if (weightedEvents.length === 0) {
+        return;
+      }
 
-    const randomIndex = Math.floor(Math.random() * weightedEvents.length);
-    const template = weightedEvents[randomIndex];
+      const randomIndex = Math.floor(Math.random() * weightedEvents.length);
+      const template = weightedEvents[randomIndex];
 
-    // 创建事件
-    const event: SystemEvent = {
-      id: uuidv4(),
-      type: template.type,
-      severity: template.severity,
-      title: template.title,
-      description: template.description,
-      timestamp: new Date(),
-      resolved: false,
-    };
-
-    // 添加到事件列表
-    this.events.unshift(event);
-    this.events = this.events.slice(0, 100); // 只保留最新的100个事件
-
-    // 添加系统通知
-    const systemStore = useSystemStore.getState();
-    systemStore.addNotification({
-      title: event.title,
-      message: event.description,
-      type: event.severity === 'critical' ? 'error' : event.severity,
-    });
-
-    // 添加MOSS消息
-    const aiStore = useAIStore.getState();
-    aiStore.addMessage({
-      type: event.severity === 'error' || event.severity === 'critical' ? 'warning' : 'info',
-      content: `检测到${event.title}，${event.description}`,
-    });
-
-    // 创建相关任务
-    if (template.taskCreation && template.taskTitle && template.taskDescription) {
-      const taskStore = useTaskStore.getState();
-      const newTask: Task = {
+      // 创建事件
+      const event: SystemEvent = {
         id: uuidv4(),
-        name: template.taskTitle,
-        description: template.taskDescription,
-        status: 'pending',
-        priority: event.severity === 'critical' ? 'critical' : event.severity === 'error' ? 'high' : 'normal',
-        progress: 0,
-        dependencies: [],
-        scheduledAt: null,
-        startedAt: null,
-        completedAt: null,
-        result: null,
-        error: null,
-        resources: {
-          cpu: 0,
-          memory: 0,
-          network: 0,
-        },
-        metadata: {
-          category: 'system',
-        },
-        createdAt: new Date(),
-        updatedAt: new Date(),
+        type: template.type,
+        severity: template.severity,
+        title: template.title,
+        description: template.description,
+        timestamp: new Date(),
+        resolved: false,
       };
-      taskStore.addTask(newTask);
-      event.relatedTaskId = newTask.id;
-    }
 
-    // 生成AI决策（针对严重事件）
-    if (event.severity === 'error' || event.severity === 'critical') {
-      // 这里可以调用MOSS决策引擎
+      // 添加到事件列表
+      this.events.unshift(event);
+      this.events = this.events.slice(0, 100); // 只保留最新的100个事件
+
+      // 添加系统通知
+      const systemStore = useSystemStore.getState();
+      systemStore.addNotification({
+        title: event.title,
+        message: event.description,
+        type: event.severity === 'critical' ? 'error' : event.severity,
+      });
+
+      // 添加MOSS消息
+      const aiStore = useAIStore.getState();
+      aiStore.addMessage({
+        type: event.severity === 'error' || event.severity === 'critical' ? 'warning' : 'info',
+        content: `检测到${event.title}，${event.description}`,
+      });
+
+      // 创建相关任务
+      if (template.taskCreation && template.taskTitle && template.taskDescription) {
+        const taskStore = useTaskStore.getState();
+        const newTask: Task = {
+          id: uuidv4(),
+          name: template.taskTitle,
+          description: template.taskDescription,
+          status: 'pending',
+          priority: event.severity === 'critical' ? 'critical' : event.severity === 'error' ? 'high' : 'normal',
+          progress: 0,
+          dependencies: [],
+          scheduledAt: null,
+          startedAt: null,
+          completedAt: null,
+          result: null,
+          error: null,
+          resources: {
+            cpu: 0,
+            memory: 0,
+            network: 0,
+          },
+          metadata: {
+            category: 'system',
+          },
+          createdAt: new Date(),
+          updatedAt: new Date(),
+        };
+        taskStore.addTask(newTask);
+        event.relatedTaskId = newTask.id;
+      }
+
+      // 严重事件真正触发 MOSS 决策引擎
+      if (event.severity === 'error' || event.severity === 'critical') {
+        const decision = await MOSSDecisionEngine.analyze({
+          context: `系统事件: ${event.title}`,
+          data: {
+            riskScore: event.severity === 'critical' ? 90 : 75,
+            riskType: event.type,
+          },
+        });
+        if (decision) {
+          useAIStore.getState().addDecision(decision);
+        }
+      }
+    } catch (err) {
+      // 单次事件生成失败不应中断整个事件系统
+      console.error('[EventSystem] 生成事件失败:', err);
     }
   }
 

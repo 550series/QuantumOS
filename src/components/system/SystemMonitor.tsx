@@ -32,6 +32,10 @@ export const SystemMonitor = memo(function SystemMonitor() {
   const [historyData, setHistoryData] = useState<SystemHistoryData[]>([]);
   const canvasRef = useRef<HTMLCanvasElement>(null);
 
+  // 用 ref 持有最新 status，避免将其放入 effect 依赖导致 interval 反复重建
+  const statusRef = useRef(status);
+  statusRef.current = status;
+
   // 生成模拟系统数据
   useEffect(() => {
     if (!isMonitoring) return;
@@ -49,13 +53,15 @@ export const SystemMonitor = memo(function SystemMonitor() {
       const networkDownload = 100 + Math.random() * 100;
       const networkUpload = 50 + Math.random() * 50;
 
+      const currentMemory = statusRef.current.memory;
+
       // 更新系统状态
       updateStatus({
         cpu,
         memory: {
-          ...status.memory,
-          used: (memory / 100) * status.memory.total,
-          free: status.memory.total - (memory / 100) * status.memory.total,
+          ...currentMemory,
+          used: (memory / 100) * currentMemory.total,
+          free: currentMemory.total - (memory / 100) * currentMemory.total,
           percentage: memory,
         },
         network: {
@@ -84,7 +90,7 @@ export const SystemMonitor = memo(function SystemMonitor() {
     generateSystemData();
     const interval = setInterval(generateSystemData, 2000);
     return () => clearInterval(interval);
-  }, [isMonitoring, status, updateStatus]);
+  }, [isMonitoring, updateStatus]);
 
   // 绘制系统状态图表
   useEffect(() => {

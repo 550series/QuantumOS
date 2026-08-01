@@ -186,35 +186,43 @@ export class SimulationSystem {
 
     // 延迟后应用系统影响
     setTimeout(() => {
-      // 更新系统状态
-      systemStore.updateStatus({
-        cpu: scenario.systemImpact.cpu,
-        memory: {
-          ...systemStore.status.memory,
-          used: (scenario.systemImpact.memory / 100) * systemStore.status.memory.total,
-          free: systemStore.status.memory.total - (scenario.systemImpact.memory / 100) * systemStore.status.memory.total,
-          percentage: scenario.systemImpact.memory,
-        },
-        network: scenario.systemImpact.network,
-      });
-
-      // 生成AI决策
-      MOSSDecisionEngine.analyze({
-        context: `场景触发: ${scenario.name}`,
-        data: {
+      try {
+        // 更新系统状态
+        systemStore.updateStatus({
           cpu: scenario.systemImpact.cpu,
-          memory: scenario.systemImpact.memory,
-          riskScore: scenario.type === 'emergency' ? 90 : scenario.type === 'warning' ? 75 : 40,
-          riskType: scenario.type === 'emergency' ? 'resource_exhaustion' : scenario.type === 'warning' ? 'high_load' : 'normal',
-        },
-      });
+          memory: {
+            ...systemStore.status.memory,
+            used: (scenario.systemImpact.memory / 100) * systemStore.status.memory.total,
+            free: systemStore.status.memory.total - (scenario.systemImpact.memory / 100) * systemStore.status.memory.total,
+            percentage: scenario.systemImpact.memory,
+          },
+          network: scenario.systemImpact.network,
+        });
 
-      // 添加MOSS消息
-      aiStore.addMessage({
-        type: scenario.type === 'emergency' ? 'warning' : 'info',
-        content: `检测到${scenario.name}，正在分析系统状态...`,
-      });
+        // 生成AI决策并将结果写入 store
+        MOSSDecisionEngine.analyze({
+          context: `场景触发: ${scenario.name}`,
+          data: {
+            cpu: scenario.systemImpact.cpu,
+            memory: scenario.systemImpact.memory,
+            riskScore: scenario.type === 'emergency' ? 90 : scenario.type === 'warning' ? 75 : 40,
+            riskType: scenario.type === 'emergency' ? 'resource_exhaustion' : scenario.type === 'warning' ? 'high_load' : 'normal',
+          },
+        })
+          .then(decision => {
+            if (decision) aiStore.addDecision(decision);
+          })
+          .catch(err => console.error('[Simulation] AI 决策生成失败:', err));
 
+        // 添加MOSS消息
+        aiStore.addMessage({
+          type: scenario.type === 'emergency' ? 'warning' : 'info',
+          content: `检测到${scenario.name}，正在分析系统状态...`,
+        });
+      } catch (err) {
+        // 回调内异常不应无人接
+        console.error('[Simulation] 应用场景影响失败:', err);
+      }
     }, scenario.triggerDelay);
 
     // 场景结束
@@ -225,7 +233,9 @@ export class SimulationSystem {
 
   // 解决场景
   private static resolveScenario() {
-    if (this.activeScenario) {
+    if (!this.activeScenario) return;
+
+    try {
       this.activeScenario.resolved = true;
       this.activeScenario.endTime = new Date();
 
@@ -259,7 +269,10 @@ export class SimulationSystem {
         type: 'success',
         content: `${this.activeScenario.name}已解决，系统状态已恢复正常。`,
       });
-
+    } catch (err) {
+      // 回调内异常不应无人接
+      console.error('[Simulation] 解决场景失败:', err);
+    } finally {
       this.activeScenario = null;
     }
   }

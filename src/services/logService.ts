@@ -202,9 +202,9 @@ export class MOSSLogger {
     return createLog('error', category, source, message, details);
   }
 
-  static critical(category: LogCategory, source: string, message: string, details?: Record<string, unknown>) {
-    // 创建关键日志和警报
-    createLog('critical', category, source, message, details);
+  static async critical(category: LogCategory, source: string, message: string, details?: Record<string, unknown>) {
+    // 创建关键日志和警报（需 await 日志写入，避免异常被吞、日志丢失）
+    await createLog('critical', category, source, message, details);
     return createAlert('critical', '系统关键错误', message, source);
   }
 }
