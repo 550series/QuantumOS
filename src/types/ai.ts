@@ -10,6 +10,9 @@ export type DecisionType =
 
 export type DecisionStatus = 'pending' | 'approved' | 'rejected' | 'executed';
 
+// 决策建议的紧急度
+export type DecisionUrgency = 'low' | 'medium' | 'high' | 'critical';
+
 export interface AIDecision {
   id: string;
   type: DecisionType;
@@ -36,7 +39,7 @@ export interface Recommendation {
   parameters: Record<string, unknown>;
   impact: ImpactAssessment;
   alternatives: Alternative[];
-  urgency: 'low' | 'medium' | 'high' | 'critical';
+  urgency: DecisionUrgency;
 }
 
 export interface ImpactAssessment {

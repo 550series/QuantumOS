@@ -1,6 +1,6 @@
 'use client';
 
-import React, { memo, useEffect, useState } from 'react';
+import React, { memo, useCallback, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useAIStore } from '@/stores';
 import {
@@ -11,20 +11,11 @@ import {
   getMossAnalysisMessage,
   getMossInfoMessage,
 } from '@/lib/ai/decisionEngine';
-import { Panel } from '@/components/ui/Panel/Panel';
-import { Button } from '@/components/ui/Button/Button';
+import { Panel, Button, SelectableCard } from '@/components/ui';
+import { getUrgencyColor } from '@/lib/theme/severityTheme';
+import { useAsyncInit } from '@/lib/hooks/useAsyncInit';
 import type { AIDecision } from '@/types';
-import {
-  Brain,
-  CheckCircle,
-  XCircle,
-  Clock,
-  AlertTriangle,
-  TrendingUp,
-  Cpu,
-  Activity,
-  Zap,
-} from 'lucide-react';
+import { Brain, CheckCircle, XCircle, Clock, TrendingUp, Cpu, Activity, Zap } from 'lucide-react';
 
 // 决策类型映射
 const decisionTypeNames = {
@@ -34,13 +25,6 @@ const decisionTypeNames = {
   system_maintenance: '系统维护',
   anomaly_detection: '异常检测',
   energy_optimization: '能源优化',
-};
-
-const urgencyColors = {
-  low: 'text-moss-white/60',
-  medium: 'text-cyber-orange',
-  high: 'text-cyber-red',
-  critical: 'text-cyber-red animate-pulse',
 };
 
 export const AIDecisionCenter = memo(function AIDecisionCenter() {
@@ -60,42 +44,44 @@ export const AIDecisionCenter = memo(function AIDecisionCenter() {
   const [selectedDecision, setSelectedDecision] = useState<AIDecision | null>(null);
   const [mossGreeting, setMossGreeting] = useState('');
 
-  // 初始化
-  useEffect(() => {
-    const init = async () => {
-      await initDefaultDecisions();
-      const decisions = await getDecisions();
-      setDecisions(decisions);
-      setActive(true);
+  // 初始化（仅在挂载时执行一次：含欢迎消息等一次性副作用，因此不复用 refresh）
+  useAsyncInit(async () => {
+    await initDefaultDecisions();
+    const decisions = await getDecisions();
+    setDecisions(decisions);
+    setActive(true);
 
-      // MOSS欢迎消息
-      setMossGreeting(getMossMessage('greeting'));
+    // MOSS欢迎消息
+    setMossGreeting(getMossMessage('greeting'));
 
-      // 添加初始消息
-      addMessage({
-        type: 'info',
-        content: 'MOSS人工智能决策系统已启动',
-      });
+    // 添加初始消息
+    addMessage({
+      type: 'info',
+      content: 'MOSS人工智能决策系统已启动',
+    });
 
-      // 更新指标
-      updateMetrics({
-        decisionsCount: decisions.length,
-        successRate: decisions.filter((d) => d.status === 'executed').length / decisions.length,
-        averageConfidence:
-          decisions.reduce((sum, d) => sum + d.confidence, 0) / decisions.length,
-        responseTime: 250,
-      });
-    };
-    init();
-  }, [setDecisions, setActive, addMessage, updateMetrics]);
+    // 更新指标
+    updateMetrics({
+      decisionsCount: decisions.length,
+      successRate: decisions.filter((d) => d.status === 'executed').length / decisions.length,
+      averageConfidence: decisions.reduce((sum, d) => sum + d.confidence, 0) / decisions.length,
+      responseTime: 250,
+    });
+  }, []);
+
+  // 变更后重拉决策列表，替代各 handler 中重复的 getDecisions + setDecisions
+  const refreshDecisions = useCallback(async (): Promise<AIDecision[]> => {
+    const updated = await getDecisions();
+    setDecisions(updated);
+    return updated;
+  }, [setDecisions]);
 
   // 批准决策
   const handleApprove = async (decisionId: string) => {
     setThinking(true);
     await MOSSDecisionEngine.approveDecision(decisionId, 'user');
 
-    const updated = await getDecisions();
-    setDecisions(updated);
+    await refreshDecisions();
     setSelectedDecision(null);
     setThinking(false);
 
@@ -110,8 +96,7 @@ export const AIDecisionCenter = memo(function AIDecisionCenter() {
     setThinking(true);
     await MOSSDecisionEngine.rejectDecision(decisionId);
 
-    const updated = await getDecisions();
-    setDecisions(updated);
+    await refreshDecisions();
     setSelectedDecision(null);
     setThinking(false);
 
@@ -153,8 +138,7 @@ export const AIDecisionCenter = memo(function AIDecisionCenter() {
         content: getMossAnalysisMessage(),
       });
 
-      const updated = await getDecisions();
-      setDecisions(updated);
+      const updated = await refreshDecisions();
       updateMetrics({
         decisionsCount: updated.length,
       });
@@ -193,13 +177,9 @@ export const AIDecisionCenter = memo(function AIDecisionCenter() {
                   isActive ? 'bg-cyber-green' : 'bg-moss-white/30'
                 }`}
               />
-              <span className="text-xs text-moss-white/80">
-                {isActive ? '在线' : '离线'}
-              </span>
+              <span className="text-xs text-moss-white/80">{isActive ? '在线' : '离线'}</span>
               {isThinking && (
-                <span className="text-xs text-cyber-green animate-pulse ml-2">
-                  思考中...
-                </span>
+                <span className="text-xs text-cyber-green animate-pulse ml-2">思考中...</span>
               )}
             </div>
           </div>
@@ -212,9 +192,7 @@ export const AIDecisionCenter = memo(function AIDecisionCenter() {
             </div>
             <div className="flex items-center justify-between text-xs">
               <span className="text-moss-white/60">成功率</span>
-              <span className="text-cyber-green">
-                {(metrics.successRate * 100).toFixed(1)}%
-              </span>
+              <span className="text-cyber-green">{(metrics.successRate * 100).toFixed(1)}%</span>
             </div>
             <div className="flex items-center justify-between text-xs">
               <span className="text-moss-white/60">平均置信度</span>
@@ -254,10 +232,10 @@ export const AIDecisionCenter = memo(function AIDecisionCenter() {
                     message.type === 'info'
                       ? 'border-moss-cyan/20 text-moss-white/80'
                       : message.type === 'success'
-                      ? 'border-cyber-green/20 text-cyber-green'
-                      : message.type === 'warning'
-                      ? 'border-cyber-orange/20 text-cyber-orange'
-                      : 'border-cyber-red/20 text-cyber-red'
+                        ? 'border-cyber-green/20 text-cyber-green'
+                        : message.type === 'warning'
+                          ? 'border-cyber-orange/20 text-cyber-orange'
+                          : 'border-cyber-red/20 text-cyber-red'
                   }
                 `}
               >
@@ -273,23 +251,17 @@ export const AIDecisionCenter = memo(function AIDecisionCenter() {
         <Panel title="决策历史" className="flex-1 overflow-hidden">
           <div className="space-y-3 h-full overflow-auto pr-2">
             {decisions.map((decision) => (
-              <motion.div
+              <SelectableCard
                 key={decision.id}
-                initial={{ opacity: 0, y: 10 }}
-                animate={{ opacity: 1, y: 0 }}
-                className={`
-                  border rounded p-3 cursor-pointer transition-all
-                  ${
-                    selectedDecision?.id === decision.id
-                      ? 'border-moss-cyan bg-moss-cyan/10 shadow-neon'
-                      : 'border-moss-cyan/20 hover:border-moss-cyan/40'
-                  }
-                `}
+                selected={selectedDecision?.id === decision.id}
                 onClick={() => setSelectedDecision(decision)}
+                className="border-moss-cyan/20 hover:border-moss-cyan/40"
               >
                 <div className="flex items-center justify-between mb-2">
                   <div className="flex items-center gap-2">
-                    <Zap className={`w-4 h-4 ${urgencyColors[decision.recommendation.urgency]}`} />
+                    <Zap
+                      className={`w-4 h-4 ${getUrgencyColor(decision.recommendation.urgency)}`}
+                    />
                     <span className="font-medium text-moss-white">
                       {decisionTypeNames[decision.type]}
                     </span>
@@ -327,7 +299,7 @@ export const AIDecisionCenter = memo(function AIDecisionCenter() {
                     <span>稳定性+{decision.recommendation.impact.stability}%</span>
                   </div>
                 </div>
-              </motion.div>
+              </SelectableCard>
             ))}
           </div>
         </Panel>

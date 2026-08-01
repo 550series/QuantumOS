@@ -1,6 +1,6 @@
 'use client';
 
-import React, { memo, useEffect, useState } from 'react';
+import React, { memo, useCallback, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { useTaskStore } from '@/stores';
 import {
@@ -10,89 +10,39 @@ import {
   startTask,
   cancelTask,
   initDefaultTasks,
-  getTaskStats,
 } from '@/services/taskService';
-import { Panel, Button } from '@/components/ui';
+import { Panel, Button, EmptyState, SelectableCard } from '@/components/ui';
+import { getTaskStatusStyle, getTaskPriorityColor } from '@/lib/theme/severityTheme';
+import { useAsyncInit } from '@/lib/hooks/useAsyncInit';
 import type { Task } from '@/types';
-import {
-  Play,
-  Square,
-  Trash2,
-  Plus,
-  Activity,
-  Cpu,
-  HardDrive,
-  Wifi,
-  CheckCircle,
-  XCircle,
-  Clock,
-  AlertTriangle,
-} from 'lucide-react';
-
-// 状态颜色映射
-const statusColors = {
-  pending: 'text-moss-white/60',
-  running: 'text-cyber-green',
-  completed: 'text-moss-cyan',
-  failed: 'text-cyber-red',
-  cancelled: 'text-moss-white/40',
-};
-
-const statusIcons = {
-  pending: <Clock className="w-4 h-4" />,
-  running: <Activity className="w-4 h-4 animate-pulse" />,
-  completed: <CheckCircle className="w-4 h-4" />,
-  failed: <XCircle className="w-4 h-4" />,
-  cancelled: <AlertTriangle className="w-4 h-4" />,
-};
-
-const priorityColors = {
-  low: 'text-moss-white/60',
-  normal: 'text-moss-white/80',
-  high: 'text-cyber-orange',
-  critical: 'text-cyber-red',
-};
+import { Play, Square, Trash2, Plus, Activity, Cpu, HardDrive, Wifi } from 'lucide-react';
 
 export const TaskScheduler = memo(function TaskScheduler() {
-  const {
-    tasks,
-    stats,
-    selectedTaskId,
-    setTasks,
-    selectTask,
-    updateStats,
-  } = useTaskStore();
+  const { tasks, stats, selectedTaskId, setTasks, selectTask, updateStats } = useTaskStore();
 
-  const [loading, setLoading] = useState(false);
+  // 变更后重拉任务列表 + 重算统计，替代各 handler 中重复的 getTasks + setTasks + updateStats
+  const refreshTasks = useCallback(async () => {
+    setTasks(await getTasks());
+    updateStats();
+  }, [setTasks, updateStats]);
 
   // 初始化任务
-  useEffect(() => {
-    const init = async () => {
-      setLoading(true);
-      await initDefaultTasks();
-      const tasks = await getTasks();
-      setTasks(tasks);
-      const stats = await getTaskStats();
-      updateStats();
-      setLoading(false);
-    };
-    init();
-  }, [setTasks, updateStats]);
+  const { loading } = useAsyncInit(async () => {
+    await initDefaultTasks();
+    await refreshTasks();
+  }, []);
 
-  // 定期更新统计数据
+  // 定期更新统计数据（静默拉取，不触发 loading）
   useEffect(() => {
-    const interval = setInterval(async () => {
-      const tasks = await getTasks();
-      setTasks(tasks);
-      updateStats();
+    const interval = setInterval(() => {
+      refreshTasks();
     }, 5000);
-
     return () => clearInterval(interval);
-  }, [setTasks, updateStats]);
+  }, [refreshTasks]);
 
   // 创建新任务
   const handleCreateTask = async () => {
-    const task = await createTask({
+    await createTask({
       name: '新任务',
       description: '任务描述',
       status: 'pending',
@@ -107,34 +57,26 @@ export const TaskScheduler = memo(function TaskScheduler() {
       resources: { cpu: 0, memory: 0, network: 0 },
       metadata: {},
     });
-    const updatedTasks = await getTasks();
-    setTasks(updatedTasks);
-    updateStats();
+    await refreshTasks();
   };
 
   // 启动任务
   const handleStartTask = async (id: string) => {
     await startTask(id);
-    const updatedTasks = await getTasks();
-    setTasks(updatedTasks);
-    updateStats();
+    await refreshTasks();
   };
 
   // 取消任务
   const handleCancelTask = async (id: string) => {
     await cancelTask(id);
-    const updatedTasks = await getTasks();
-    setTasks(updatedTasks);
-    updateStats();
+    await refreshTasks();
   };
 
   // 删除任务
   const handleDeleteTask = async (id: string) => {
     await deleteTask(id);
-    const updatedTasks = await getTasks();
-    setTasks(updatedTasks);
+    await refreshTasks();
     selectTask(null);
-    updateStats();
   };
 
   return (
@@ -179,121 +121,118 @@ export const TaskScheduler = memo(function TaskScheduler() {
       {/* 任务列表 */}
       <div className="flex-1 overflow-auto space-y-2">
         {loading ? (
-          <div className="flex items-center justify-center h-32 text-moss-white/60">
-            加载中...
-          </div>
+          <div className="flex items-center justify-center h-32 text-moss-white/60">加载中...</div>
         ) : (
-          tasks.map((task) => (
-            <motion.div
-              key={task.id}
-              initial={{ opacity: 0, y: 10 }}
-              animate={{ opacity: 1, y: 0 }}
-              className={`
-                border rounded p-3 cursor-pointer transition-all
-                ${
-                  selectedTaskId === task.id
-                    ? 'border-moss-cyan bg-moss-cyan/10 shadow-neon'
-                    : 'border-moss-cyan/20 hover:border-moss-cyan/40'
-                }
-              `}
-              onClick={() => selectTask(task.id)}
-            >
-              <div className="flex items-start justify-between mb-2">
-                <div className="flex items-center gap-2">
-                  <div className={statusColors[task.status]}>
-                    {statusIcons[task.status]}
+          tasks.map((task) => {
+            const statusStyle = getTaskStatusStyle(task.status);
+            const StatusIcon = statusStyle.icon;
+            return (
+              <SelectableCard
+                key={task.id}
+                selected={selectedTaskId === task.id}
+                onClick={() => selectTask(task.id)}
+                className="border-moss-cyan/20 hover:border-moss-cyan/40"
+              >
+                <div className="flex items-start justify-between mb-2">
+                  <div className="flex items-center gap-2">
+                    <div className={statusStyle.color}>
+                      <StatusIcon className={`w-4 h-4 ${statusStyle.iconClassName ?? ''}`} />
+                    </div>
+                    <span className="font-medium text-moss-white">{task.name}</span>
+                    <span
+                      className={`text-xs px-2 py-0.5 rounded border ${getTaskPriorityColor(task.priority)}`}
+                    >
+                      {task.priority}
+                    </span>
                   </div>
-                  <span className="font-medium text-moss-white">{task.name}</span>
-                  <span className={`text-xs px-2 py-0.5 rounded border ${priorityColors[task.priority]}`}>
-                    {task.priority}
-                  </span>
-                </div>
-                <div className="flex items-center gap-1">
-                  {task.status === 'pending' && (
+                  <div className="flex items-center gap-1">
+                    {task.status === 'pending' && (
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={(e: React.MouseEvent) => {
+                          e.stopPropagation();
+                          handleStartTask(task.id);
+                        }}
+                      >
+                        <Play className="w-3 h-3" />
+                      </Button>
+                    )}
+                    {task.status === 'running' && (
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={(e: React.MouseEvent) => {
+                          e.stopPropagation();
+                          handleCancelTask(task.id);
+                        }}
+                      >
+                        <Square className="w-3 h-3" />
+                      </Button>
+                    )}
                     <Button
                       variant="ghost"
                       size="sm"
                       onClick={(e: React.MouseEvent) => {
                         e.stopPropagation();
-                        handleStartTask(task.id);
+                        handleDeleteTask(task.id);
                       }}
                     >
-                      <Play className="w-3 h-3" />
+                      <Trash2 className="w-3 h-3 text-cyber-red" />
                     </Button>
-                  )}
-                  {task.status === 'running' && (
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={(e: React.MouseEvent) => {
-                        e.stopPropagation();
-                        handleCancelTask(task.id);
-                      }}
-                    >
-                      <Square className="w-3 h-3" />
-                    </Button>
-                  )}
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={(e: React.MouseEvent) => {
-                      e.stopPropagation();
-                      handleDeleteTask(task.id);
-                    }}
-                  >
-                    <Trash2 className="w-3 h-3 text-cyber-red" />
-                  </Button>
-                </div>
-              </div>
-
-              {task.description && (
-                <p className="text-xs text-moss-white/60 mb-2">{task.description}</p>
-              )}
-
-              {/* 进度条 */}
-              {task.status === 'running' && (
-                <div className="mb-2">
-                  <div className="h-1 bg-moss-cyan/20 rounded-full overflow-hidden">
-                    <motion.div
-                      className="h-full bg-cyber-green"
-                      style={{ width: `${task.progress}%` }}
-                      transition={{ duration: 0.3 }}
-                    />
                   </div>
-                  <div className="text-xs text-moss-white/60 mt-1">{task.progress}%</div>
                 </div>
-              )}
 
-              {/* 资源使用 */}
-              <div className="flex items-center gap-4 text-xs text-moss-white/60">
-                <div className="flex items-center gap-1">
-                  <Cpu className="w-3 h-3" />
-                  <span>{task.resources.cpu.toFixed(1)}%</span>
-                </div>
-                <div className="flex items-center gap-1">
-                  <HardDrive className="w-3 h-3" />
-                  <span>{task.resources.memory.toFixed(0)}MB</span>
-                </div>
-                <div className="flex items-center gap-1">
-                  <Wifi className="w-3 h-3" />
-                  <span>{task.resources.network.toFixed(0)}KB/s</span>
-                </div>
-              </div>
+                {task.description && (
+                  <p className="text-xs text-moss-white/60 mb-2">{task.description}</p>
+                )}
 
-              {task.error && (
-                <div className="mt-2 text-xs text-cyber-red bg-cyber-red/10 p-2 rounded">
-                  {task.error}
+                {/* 进度条 */}
+                {task.status === 'running' && (
+                  <div className="mb-2">
+                    <div className="h-1 bg-moss-cyan/20 rounded-full overflow-hidden">
+                      <motion.div
+                        className="h-full bg-cyber-green"
+                        style={{ width: `${task.progress}%` }}
+                        transition={{ duration: 0.3 }}
+                      />
+                    </div>
+                    <div className="text-xs text-moss-white/60 mt-1">{task.progress}%</div>
+                  </div>
+                )}
+
+                {/* 资源使用 */}
+                <div className="flex items-center gap-4 text-xs text-moss-white/60">
+                  <div className="flex items-center gap-1">
+                    <Cpu className="w-3 h-3" />
+                    <span>{task.resources.cpu.toFixed(1)}%</span>
+                  </div>
+                  <div className="flex items-center gap-1">
+                    <HardDrive className="w-3 h-3" />
+                    <span>{task.resources.memory.toFixed(0)}MB</span>
+                  </div>
+                  <div className="flex items-center gap-1">
+                    <Wifi className="w-3 h-3" />
+                    <span>{task.resources.network.toFixed(0)}KB/s</span>
+                  </div>
                 </div>
-              )}
-            </motion.div>
-          ))
+
+                {task.error && (
+                  <div className="mt-2 text-xs text-cyber-red bg-cyber-red/10 p-2 rounded">
+                    {task.error}
+                  </div>
+                )}
+              </SelectableCard>
+            );
+          })
         )}
 
         {tasks.length === 0 && !loading && (
-          <div className="flex flex-col items-center justify-center h-32 text-moss-white/40">
-            <Activity className="w-12 h-12 mb-2" />
-            <p>暂无任务</p>
-          </div>
+          <EmptyState
+            className="h-32"
+            icon={<Activity className="w-12 h-12 mb-2" />}
+            title="暂无任务"
+          />
         )}
       </div>
     </Panel>

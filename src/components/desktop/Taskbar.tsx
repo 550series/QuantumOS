@@ -1,11 +1,11 @@
 'use client';
 
 import React, { memo } from 'react';
-import { motion } from 'framer-motion';
 import { Grid } from 'lucide-react';
 import { Button } from '@/components/ui';
 import { useSystemStore } from '@/stores';
 import { appConfig, type AppType } from './appConfig';
+import { StartMenu } from './StartMenu';
 
 interface TaskbarProps {
   currentTime: Date | null;
@@ -14,7 +14,12 @@ interface TaskbarProps {
   onOpenApp: (appType: AppType) => void;
 }
 
-export const Taskbar = memo(function Taskbar({ currentTime, startMenuOpen, onToggleStartMenu, onOpenApp }: TaskbarProps) {
+export const Taskbar = memo(function Taskbar({
+  currentTime,
+  startMenuOpen,
+  onToggleStartMenu,
+  onOpenApp,
+}: TaskbarProps) {
   const { windows, activeWindowId, focusWindow, status } = useSystemStore();
 
   return (
@@ -29,27 +34,7 @@ export const Taskbar = memo(function Taskbar({ currentTime, startMenuOpen, onTog
           MOSS
         </Button>
 
-        {startMenuOpen && (
-          <motion.div
-            initial={{ opacity: 0, y: 10 }}
-            animate={{ opacity: 1, y: 0 }}
-            className="absolute bottom-full left-0 mb-2 glass-panel p-4 min-w-64"
-          >
-            <h3 className="font-mono text-xs text-moss-cyan mb-3">应用</h3>
-            <div className="space-y-1">
-              {Object.entries(appConfig).map(([key, config]) => (
-                <button
-                  key={key}
-                  onClick={() => onOpenApp(key as AppType)}
-                  className="w-full flex items-center gap-3 px-3 py-2 rounded hover:bg-moss-cyan/10 transition-colors"
-                >
-                  <div className="text-moss-cyan">{config.icon}</div>
-                  <span className="text-sm text-moss-white">{config.title}</span>
-                </button>
-              ))}
-            </div>
-          </motion.div>
-        )}
+        {startMenuOpen && <StartMenu onOpenApp={onOpenApp} />}
       </div>
 
       <div className="flex items-center gap-2 flex-1 justify-center">
@@ -75,9 +60,7 @@ export const Taskbar = memo(function Taskbar({ currentTime, startMenuOpen, onTog
 
       <div className="flex items-center gap-4">
         <div className="flex items-center gap-3">
-          <div className="text-moss-white/60 font-mono text-xs">
-            CPU: {Math.round(status.cpu)}%
-          </div>
+          <div className="text-moss-white/60 font-mono text-xs">CPU: {Math.round(status.cpu)}%</div>
           <div className="text-moss-white/60 font-mono text-xs">
             MEM: {Math.round(status.memory.percentage)}%
           </div>

@@ -1,16 +1,10 @@
 'use client';
 
 import React, { useCallback } from 'react';
-import { Bell, CheckCircle, AlertTriangle, XCircle, Info, Trash2 } from 'lucide-react';
+import { Bell, Trash2 } from 'lucide-react';
 import { useSystemStore } from '@/stores';
-import { Button } from '@/components/ui';
-
-const typeConfig = {
-  info: { icon: Info, color: 'text-moss-cyan', bg: 'bg-moss-cyan/10', border: 'border-moss-cyan/30' },
-  success: { icon: CheckCircle, color: 'text-cyber-green', bg: 'bg-cyber-green/10', border: 'border-cyber-green/30' },
-  warning: { icon: AlertTriangle, color: 'text-cyber-orange', bg: 'bg-cyber-orange/10', border: 'border-cyber-orange/30' },
-  error: { icon: XCircle, color: 'text-cyber-red', bg: 'bg-cyber-red/10', border: 'border-cyber-red/30' },
-};
+import { Button, EmptyState } from '@/components/ui';
+import { getNotificationTypeStyle } from '@/lib/theme/severityTheme';
 
 export const NotificationCenter: React.FC = () => {
   const { notifications, markNotificationRead, clearNotifications } = useSystemStore();
@@ -47,14 +41,15 @@ export const NotificationCenter: React.FC = () => {
       </div>
 
       {notifications.length === 0 ? (
-        <div className="flex flex-col items-center justify-center py-16 text-moss-white/40">
-          <Bell className="w-12 h-12 mb-3 opacity-30" />
-          <p className="font-mono text-sm">暂无通知</p>
-        </div>
+        <EmptyState
+          className="py-16 text-moss-white/40 font-mono text-sm"
+          icon={<Bell className="w-12 h-12 mb-3 opacity-30" />}
+          title="暂无通知"
+        />
       ) : (
         <div className="space-y-2 max-h-[calc(100vh-300px)] overflow-y-auto">
           {notifications.map((notification) => {
-            const config = typeConfig[notification.type];
+            const config = getNotificationTypeStyle(notification.type);
             const Icon = config.icon;
 
             return (
@@ -67,7 +62,9 @@ export const NotificationCenter: React.FC = () => {
                   <Icon className={`w-4 h-4 mt-0.5 flex-shrink-0 ${config.color}`} />
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center justify-between mb-1">
-                      <span className="font-mono text-sm text-moss-white">{notification.title}</span>
+                      <span className="font-mono text-sm text-moss-white">
+                        {notification.title}
+                      </span>
                       <span className="font-mono text-xs text-moss-white/40">
                         {new Date(notification.timestamp).toLocaleTimeString('zh-CN')}
                       </span>

@@ -1,8 +1,20 @@
 'use client';
 
-import React, { useEffect, useCallback, useRef } from 'react';
+import React, { useEffect, useCallback, useRef, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { RefreshCw, PlusCircle, Terminal, Lock, Settings, FolderOpen, type LucideIcon } from 'lucide-react';
+import {
+  RefreshCw,
+  PlusCircle,
+  Terminal,
+  Lock,
+  Settings,
+  FolderOpen,
+  type LucideIcon,
+} from 'lucide-react';
+
+// 菜单尺寸常量，用于边界 clamp 计算
+const MENU_WIDTH = 220;
+const MENU_HEIGHT = 320;
 
 interface ContextMenuProps {
   x: number;
@@ -48,7 +60,7 @@ export const ContextMenu: React.FC<ContextMenuProps> = ({
         onClose();
       }
     },
-    [onClose]
+    [onClose],
   );
 
   useEffect(() => {
@@ -64,8 +76,19 @@ export const ContextMenu: React.FC<ContextMenuProps> = ({
     return () => document.removeEventListener('keydown', handleEsc);
   }, [onClose]);
 
-  const adjustedX = Math.min(x, window.innerWidth - 220);
-  const adjustedY = Math.min(y, window.innerHeight - 320);
+  // 视口尺寸仅在客户端可用，放入 state 避免渲染期直接读 window 导致 SSR/CSR 不一致。
+  // resize 时同步更新，保证菜单始终不溢出屏幕。
+  const [viewport, setViewport] = useState({ width: 0, height: 0 });
+  useEffect(() => {
+    const update = () => setViewport({ width: window.innerWidth, height: window.innerHeight });
+    update();
+    window.addEventListener('resize', update);
+    return () => window.removeEventListener('resize', update);
+  }, []);
+
+  // 视口尺寸就绪前用原始坐标，就绪后 clamp 到屏幕内
+  const adjustedX = viewport.width ? Math.min(x, viewport.width - MENU_WIDTH) : x;
+  const adjustedY = viewport.height ? Math.min(y, viewport.height - MENU_HEIGHT) : y;
 
   const menuItems: MenuEntry[] = [
     { icon: RefreshCw, label: '刷新桌面', onClick: onRefresh },
