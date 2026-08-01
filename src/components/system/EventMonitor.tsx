@@ -1,6 +1,6 @@
 'use client';
 
-import React, { memo, useEffect, useState } from 'react';
+import React, { memo, useEffect, useRef, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Panel } from '@/components/ui/Panel/Panel';
 import { Button } from '@/components/ui/Button/Button';
@@ -45,10 +45,18 @@ export const EventMonitor = memo(function EventMonitor() {
   const [isEventSystemRunning, setIsEventSystemRunning] = useState(false);
   const [selectedEvent, setSelectedEvent] = useState<SystemEvent | null>(null);
 
-  // 定期更新事件列表
+  // 定期更新事件列表（无变化时跳过 setState，避免无谓重渲染）
+  const prevSignatureRef = useRef<string>('');
   useEffect(() => {
     const updateEvents = () => {
-      setEvents(EventSystem.getEvents());
+      const latest = EventSystem.getEvents();
+      // 签名：长度 + 末尾项 id/resolved + 首项 id，足以捕获新增/解决状态翻转
+      const last = latest[latest.length - 1];
+      const first = latest[0];
+      const signature = `${latest.length}|${first?.id ?? ''}|${last?.id ?? ''}|${last?.resolved ?? ''}`;
+      if (signature === prevSignatureRef.current) return;
+      prevSignatureRef.current = signature;
+      setEvents(latest);
     };
 
     updateEvents();

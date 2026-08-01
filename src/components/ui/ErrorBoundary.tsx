@@ -22,6 +22,11 @@ export class ErrorBoundary extends React.Component<ErrorBoundaryProps, ErrorBoun
     return { hasError: true, error };
   }
 
+  componentDidCatch(error: Error, errorInfo: React.ErrorInfo): void {
+    // 上报错误，便于排查（与 #30 监控基建联动时可替换为 Sentry 等）。
+    console.error('[ErrorBoundary] 捕获到渲染异常:', error, errorInfo);
+  }
+
   render() {
     if (this.state.hasError) {
       if (this.props.fallback) {
