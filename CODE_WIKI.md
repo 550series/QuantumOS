@@ -30,7 +30,7 @@ QuantumOS/
 │   ├── components/             # React组件
 │   │   ├── boot/              # 启动动画（CodeRain、MossEye等）
 │   │   ├── desktop/           # 桌面系统（WindowManager、Taskbar等）
-│   │   ├── file-manager/      # 文件管理器
+│   │   ├── file-explorer/     # 文件管理器
 │   │   ├── task-scheduler/    # 任务调度器
 │   │   ├── ai-system/         # AI决策中心
 │   │   ├── system/            # 日志与警报系统
@@ -100,16 +100,14 @@ QuantumOS采用现代前端架构，基于Next.js 14的App Router模式，结合
 **功能**：提供虚拟文件系统，支持文件和文件夹的CRUD操作。
 
 **实现**：
-- **FileManager.tsx**：文件管理器主组件
-- **fileService.ts**：文件系统服务，处理文件操作
-- **fileStore.ts**：文件系统状态管理
+- **FileExplorer.tsx**：文件管理器主组件（直接调用 IndexedDB 的 fileDB）
+- **lib/db/index.ts**：提供 fileDB 数据访问
 
 **特性**：
 - 虚拟文件系统 (VFS) 模拟
 - 文件/文件夹 CRUD 操作（IndexedDB存储）
 - 文件预览（文本、图片、代码）
-- 拖拽交互、搜索过滤
-- 网格/列表视图切换
+- 搜索过滤
 
 ### 4.3 任务调度系统
 
@@ -123,9 +121,8 @@ QuantumOS采用现代前端架构，基于Next.js 14的App Router模式，结合
 **特性**：
 - 任务创建、配置、执行
 - 任务队列管理
-- 实时状态监控（WebSocket推送）
+- 实时状态监控
 - 资源占用可视化
-- 任务依赖关系图
 
 ### 4.4 AI智能决策系统（MOSS核心）
 
@@ -155,7 +152,7 @@ QuantumOS采用现代前端架构，基于Next.js 14的App Router模式，结合
 - 实时日志流显示
 - 多级别日志过滤（INFO/WARNING/ERROR/CRITICAL）
 - 警报弹窗通知
-- 日志搜索与导出
+- 日志搜索
 
 ## 5. 关键组件
 
@@ -183,9 +180,9 @@ QuantumOS采用现代前端架构，基于Next.js 14的App Router模式，结合
 - 触发新的决策分析
 - 展示MOSS消息和决策历史
 
-### 5.3 FileManager 组件
+### 5.3 FileExplorer 组件
 
-**位置**：[src/components/file-manager/FileManager.tsx](file:///workspace/src/components/file-manager/FileManager.tsx)
+**位置**：[src/components/file-explorer/FileExplorer.tsx](file:///workspace/src/components/file-explorer/FileExplorer.tsx)
 
 **功能**：提供文件管理界面，支持文件和文件夹的操作。
 
@@ -194,7 +191,6 @@ QuantumOS采用现代前端架构，基于Next.js 14的App Router模式，结合
 - 加载当前目录文件
 - 处理文件双击、右键菜单等交互
 - 支持创建、删除文件和文件夹
-- 提供网格和列表两种视图模式
 
 ### 5.4 RootLayout 组件
 
@@ -227,31 +223,23 @@ QuantumOS使用Zustand进行状态管理，主要包含以下stores：
 
 ## 8. API设计
 
+> ⚠️ **WIP（开发中）**：当前 API 层为占位实现，使用模块级内存数组，数据不持久化且前端未接入。客户端主要走 `src/services/` + IndexedDB。以下为已存在的路由骨架。
+
 ### 8.1 RESTful API
 
 ```
 GET    /api/files              # 获取文件列表
 POST   /api/files              # 创建文件/文件夹
-PUT    /api/files/:id          # 更新文件
-DELETE /api/files/:id          # 删除文件
 
 GET    /api/tasks              # 获取任务列表
 POST   /api/tasks              # 创建任务
-POST   /api/tasks/:id/start    # 启动任务
-POST   /api/tasks/:id/cancel   # 取消任务
+GET    /api/tasks/:id          # 获取任务详情
+PUT    /api/tasks/:id          # 更新任务
+DELETE /api/tasks/:id          # 删除任务
 
 GET    /api/ai/decisions       # 获取决策历史
-POST   /api/ai/analyze         # 触发分析
-POST   /api/ai/decisions/:id/approve  # 批准决策
-```
-
-### 8.2 WebSocket事件
-
-```
-task:created    - 任务创建
-task:updated    - 任务更新
-ai:decision     - 新决策生成
-system:alert    - 系统警报
+POST   /api/ai/decisions       # 创建决策
+POST   /api/ai/decisions/:id   # 批准/拒绝决策（body: { action: 'approve' | 'reject' }）
 ```
 
 ## 9. 运行方式

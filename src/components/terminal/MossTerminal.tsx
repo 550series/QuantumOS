@@ -28,15 +28,7 @@ const commands: Record<string, (args: string[]) => CommandResult> = {
     type: 'normal',
   }),
   clear: () => ({ output: ['__CLEAR__'], type: 'normal' }),
-  status: () => ({
-    output: [
-      '系统状态: 正常运行',
-      '内核版本: MOSS Kernel 5.5.0',
-      '量子核心: 激活',
-      'AI 引擎: 在线',
-    ],
-    type: 'success',
-  }),
+  // status 命令由组件内的动态分支处理（读取实时 systemStore.status）
   date: () => ({
     output: [new Date().toLocaleString('zh-CN')],
     type: 'normal',

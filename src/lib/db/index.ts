@@ -94,11 +94,10 @@ export async function initDB(): Promise<IDBPDatabase<QuantumOSDB>> {
         decisionStore.createIndex('by-status', 'status');
       }
 
-      // 日志存储
+      // 日志存储（id 为 uuid 字符串，无需 autoIncrement）
       if (!db.objectStoreNames.contains('logs')) {
         const logStore = db.createObjectStore('logs', {
           keyPath: 'id',
-          autoIncrement: true,
         });
         logStore.createIndex('by-level', 'level');
         logStore.createIndex('by-category', 'category');

@@ -1,3 +1,8 @@
+/**
+ * @WIP 占位实现
+ * 当前使用模块级空数组（decisions: AIDecision[] = []），GET 永远 404。
+ * 待后续接入服务端持久层。
+ */
 import { NextRequest, NextResponse } from 'next/server';
 import { AIDecision } from '@/types';
 
