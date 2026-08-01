@@ -1,12 +1,20 @@
 import React from 'react';
+import dynamic from 'next/dynamic';
 import { Activity, Brain, Terminal, Bell, Settings, AlertCircle, FolderOpen } from 'lucide-react';
-import { TaskScheduler } from '@/components/task-scheduler';
-import { AIDecisionCenter } from '@/components/ai-system';
-import { LogViewer, AlertSystem, EventMonitor, SystemMonitor, NotificationCenter } from '@/components/system';
-import { SimulationPanel } from '@/components/simulation';
-import { MossTerminal } from '@/components/terminal';
-import { FileExplorer } from '@/components/file-explorer';
-import { SettingsPanel } from '@/components/settings/SettingsPanel';
+
+// 应用组件按需懒加载，避免首屏 chunk 致肿（含 Three.js / MossEye 等重型依赖）。
+// ssr:false：这些组件仅由客户端 WindowManager 在打开窗口时渲染，无需 SSR。
+const TaskScheduler = dynamic(() => import('@/components/task-scheduler').then(m => ({ default: m.TaskScheduler })), { ssr: false });
+const AIDecisionCenter = dynamic(() => import('@/components/ai-system').then(m => ({ default: m.AIDecisionCenter })), { ssr: false });
+const LogViewer = dynamic(() => import('@/components/system').then(m => ({ default: m.LogViewer })), { ssr: false });
+const AlertSystem = dynamic(() => import('@/components/system').then(m => ({ default: m.AlertSystem })), { ssr: false });
+const EventMonitor = dynamic(() => import('@/components/system').then(m => ({ default: m.EventMonitor })), { ssr: false });
+const SystemMonitor = dynamic(() => import('@/components/system').then(m => ({ default: m.SystemMonitor })), { ssr: false });
+const NotificationCenter = dynamic(() => import('@/components/system').then(m => ({ default: m.NotificationCenter })), { ssr: false });
+const SimulationPanel = dynamic(() => import('@/components/simulation').then(m => ({ default: m.SimulationPanel })), { ssr: false });
+const MossTerminal = dynamic(() => import('@/components/terminal').then(m => ({ default: m.MossTerminal })), { ssr: false });
+const FileExplorer = dynamic(() => import('@/components/file-explorer').then(m => ({ default: m.FileExplorer })), { ssr: false });
+const SettingsPanel = dynamic(() => import('@/components/settings/SettingsPanel').then(m => ({ default: m.SettingsPanel })), { ssr: false });
 
 export type AppType =
   | 'task-scheduler'

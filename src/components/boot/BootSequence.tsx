@@ -1,11 +1,18 @@
 'use client';
 
 import React, { memo, useEffect, useRef, useState } from 'react';
+import dynamic from 'next/dynamic';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useRouter } from 'next/navigation';
 import { CodeRain } from './CodeRain';
-import { MossEye } from './MossEye';
 import { SystemStatus } from './SystemStatus';
+
+// MossEye 依赖 @react-three/fiber + three（~600KB），仅在启动动画后期 showEye 时渲染。
+// 懒加载使其不进入首屏主 chunk，按需在眼睛展示前加载。
+const MossEye = dynamic(() => import('./MossEye').then(m => ({ default: m.MossEye })), {
+  ssr: false,
+  loading: () => null,
+});
 
 type BootStage = 'black' | 'code_rain' | 'system_check' | 'moss_init' | 'complete' | 'error';
 

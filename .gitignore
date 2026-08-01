@@ -140,3 +140,6 @@ vite.config.ts.timestamp-*
 
 # Qoder
 .qoder/
+
+# IDE / 工具产物（Trae 等）
+.trae/

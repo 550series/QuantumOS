@@ -76,7 +76,13 @@ export const NotificationCenter: React.FC = () => {
                       {notification.message}
                     </p>
                     {notification.action && (
-                      <button className="mt-2 font-mono text-xs text-moss-cyan hover:text-moss-white border border-moss-cyan/30 hover:border-moss-cyan px-2 py-1 rounded transition-all">
+                      <button
+                        className="mt-2 font-mono text-xs text-moss-cyan hover:text-moss-white border border-moss-cyan/30 hover:border-moss-cyan px-2 py-1 rounded transition-all"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          notification.action?.onClick?.();
+                        }}
+                      >
                         {notification.action.label}
                       </button>
                     )}

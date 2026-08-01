@@ -47,8 +47,10 @@ export const SimulationPanel = memo(function SimulationPanel() {
       if (current !== activeScenario) {
         setActiveScenario(current);
         if (current) {
+          // 深拷贝场景：resolveScenario 会原地改 activeScenario.resolved/endTime，
+          // 若存引用，历史项会被反向篡改。
           setScenarioHistory(prev => [
-            { scenario: current, timestamp: new Date() },
+            { scenario: structuredClone(current), timestamp: new Date() },
             ...prev.slice(0, 9), // 只保留最近10条
           ]);
         }

@@ -86,6 +86,6 @@ export interface Notification {
   action?: {
     label: string;
     href?: string;
-    onClick?: string;
+    onClick?: () => void;
   };
 }

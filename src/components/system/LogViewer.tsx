@@ -1,6 +1,6 @@
 'use client';
 
-import React, { memo, useEffect, useState } from 'react';
+import React, { memo, useEffect, useMemo, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Panel, Button } from '@/components/ui';
 import {
@@ -39,7 +39,6 @@ const categoryNames = {
 
 export const LogViewer = memo(function LogViewer() {
   const [logs, setLogs] = useState<LogEntry[]>([]);
-  const [filteredLogs, setFilteredLogs] = useState<LogEntry[]>([]);
   const [loading, setLoading] = useState(false);
   const [selectedLevel, setSelectedLevel] = useState<LogLevel | 'all'>('all');
   const [selectedCategory, setSelectedCategory] = useState<LogCategory | 'all'>('all');
@@ -53,7 +52,6 @@ export const LogViewer = memo(function LogViewer() {
       await initDefaultLogs();
       const logs = await getLogs(200);
       setLogs(logs);
-      setFilteredLogs(logs);
       setLoading(false);
     };
     init();
@@ -71,22 +69,21 @@ export const LogViewer = memo(function LogViewer() {
     return () => clearInterval(interval);
   }, [autoRefresh]);
 
-  // 过滤日志
-  useEffect(() => {
-    const filtered = filterLogs(
+  // 过滤日志：改用 useMemo，避免 effect 内重复 setState 触发额外渲染
+  const filteredLogs = useMemo(
+    () => filterLogs(
       logs,
       selectedLevel === 'all' ? undefined : selectedLevel,
       selectedCategory === 'all' ? undefined : selectedCategory,
       searchQuery
-    );
-    setFilteredLogs(filtered);
-  }, [logs, selectedLevel, selectedCategory, searchQuery]);
+    ),
+    [logs, selectedLevel, selectedCategory, searchQuery]
+  );
 
   // 清空日志
   const handleClear = async () => {
     await clearLogs();
     setLogs([]);
-    setFilteredLogs([]);
   };
 
   // 刷新日志

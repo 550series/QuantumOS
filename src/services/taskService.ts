@@ -1,6 +1,6 @@
 import { v4 as uuidv4 } from 'uuid';
 import { taskDB } from '@/lib/db';
-import type { Task, TaskFilter, TaskSort, TaskStats } from '@/types';
+import type { Task, TaskFilter, TaskResult, TaskSort, TaskStats } from '@/types';
 
 // 初始化示例任务
 export async function initDefaultTasks(): Promise<void> {
@@ -136,7 +136,7 @@ export async function cancelTask(id: string): Promise<Task | undefined> {
 // 完成任务
 export async function completeTask(
   id: string,
-  result?: any
+  result?: TaskResult
 ): Promise<Task | undefined> {
   return await updateTask(id, {
     status: 'completed',
