@@ -1,5 +1,6 @@
 import { create } from 'zustand';
 import { immer } from 'zustand/middleware/immer';
+import { persist } from 'zustand/middleware';
 import type { Window, SystemStatus, SystemConfig, Notification } from '@/types';
 import { defaultSettings } from '@/lib/db';
 
@@ -43,7 +44,8 @@ interface SystemState {
 }
 
 export const useSystemStore = create<SystemState>()(
-  immer((set, get) => ({
+  persist(
+    immer((set, get) => ({
     // 初始状态
     status: {
       uptime: 0,
@@ -155,6 +157,8 @@ export const useSystemStore = create<SystemState>()(
     // 通知操作
     addNotification: (notification) =>
       set((state) => {
+        // 尊重“启用通知”开关：关闭时不再注入新通知
+        if (!state.config.notificationsEnabled) return;
         state.notifications.unshift({
           ...notification,
           id: `notification-${Date.now()}`,
@@ -187,5 +191,11 @@ export const useSystemStore = create<SystemState>()(
         if (progress !== undefined) state.bootProgress = progress;
         if (stage !== undefined) state.bootStage = stage;
       }),
-  }))
+    })),
+    {
+      name: 'quantumos-system',
+      // 仅持久化用户设置，状态/窗口/通知等运行时数据不持久化
+      partialize: (state) => ({ config: state.config }),
+    }
+  )
 );

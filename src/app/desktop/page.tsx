@@ -17,28 +17,14 @@ export default function DesktopPage() {
     setCurrentTime(new Date());
     setBootState(false, 100, 'complete');
 
-    const statusInterval = setInterval(() => {
-      updateStatus({
-        cpu: Math.random() * 100,
-        memory: {
-          total: 8192,
-          used: Math.random() * 6000 + 1000,
-          free: 2000,
-          percentage: Math.random() * 70 + 10,
-        },
-        disk: {
-          total: 256,
-          used: 120 + Math.random() * 20,
-          free: 116,
-          percentage: 50,
-        },
-        network: {
-          upload: Math.random() * 1000,
-          download: Math.random() * 2000,
-        },
-        uptime: Math.floor(Math.random() * 86400),
-      });
-    }, 5000);
+    // uptime 由桌面单一维护（单调递增），cpu/内存/网络等指标交由
+    // SystemMonitor 与 simulationService 写入，避免多数据源互相覆盖
+    const bootTime = Date.now();
+    const updateUptime = () => {
+      updateStatus({ uptime: Math.floor((Date.now() - bootTime) / 1000) });
+    };
+    updateUptime();
+    const statusInterval = setInterval(updateUptime, 5000);
 
     const timeInterval = setInterval(() => {
       setCurrentTime(new Date());
