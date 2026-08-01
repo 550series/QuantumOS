@@ -1,15 +1,12 @@
 'use client';
 
 import React, { memo, useEffect, useRef, useState } from 'react';
+
 import { motion, AnimatePresence } from 'framer-motion';
-import { Panel } from '@/components/ui/Panel/Panel';
-import { Button } from '@/components/ui/Button/Button';
-import { EventSystem, SystemEvent } from '@/services/eventService';
 import {
   AlertCircle,
   CheckCircle,
   Clock,
-  XCircle,
   ShieldAlert,
   Activity,
   Network,
@@ -18,26 +15,30 @@ import {
   Pause,
 } from 'lucide-react';
 
+import { EmptyState, SelectableCard } from '@/components/ui';
+import { Button } from '@/components/ui/Button/Button';
+import { Panel } from '@/components/ui/Panel/Panel';
+import {
+  getSeverityStyle,
+  severityLabels,
+} from '@/lib/theme/severityTheme';
+import { EventSystem, SystemEvent } from '@/services/eventService';
+
+
 const eventIcons = {
-  system: <Activity className="w-4 h-4" />,
-  security: <ShieldAlert className="w-4 h-4" />,
-  performance: <Activity className="w-4 h-4" />,
-  network: <Network className="w-4 h-4" />,
-  storage: <HardDrive className="w-4 h-4" />,
+  system: Activity,
+  security: ShieldAlert,
+  performance: Activity,
+  network: Network,
+  storage: HardDrive,
 };
 
-const severityColors = {
-  info: 'text-moss-cyan',
-  warning: 'text-cyber-orange',
-  error: 'text-cyber-red',
-  critical: 'text-cyber-red animate-pulse',
-};
-
-const severityLabels = {
-  info: '信息',
-  warning: '警告',
-  error: '错误',
-  critical: '严重',
+const eventTypeLabels = {
+  system: '系统',
+  security: '安全',
+  performance: '性能',
+  network: '网络',
+  storage: '存储',
 };
 
 export const EventMonitor = memo(function EventMonitor() {
@@ -74,11 +75,21 @@ export const EventMonitor = memo(function EventMonitor() {
     setIsEventSystemRunning(!isEventSystemRunning);
   };
 
-  // 解决事件
+  // 解决事件：基于 id 更新本地数据，避免二次查询
   const handleResolveEvent = (eventId: string) => {
     EventSystem.resolveEvent(eventId);
     setEvents(EventSystem.getEvents());
     setSelectedEvent(null);
+  };
+
+  const renderEventIcon = (event: SystemEvent) => {
+    const severityStyle = getSeverityStyle(event.severity);
+    const EventIcon = eventIcons[event.type];
+    return (
+      <div className={severityStyle.color}>
+        <EventIcon className="w-4 h-4" />
+      </div>
+    );
   };
 
   return (
@@ -144,56 +155,47 @@ export const EventMonitor = memo(function EventMonitor() {
           <Panel title="事件列表" className="h-full overflow-hidden">
             <div className="space-y-2 h-full overflow-auto pr-2">
               {events.length === 0 ? (
-                <div className="text-center py-8">
-                  <AlertCircle className="w-12 h-12 mx-auto text-moss-white/30 mb-3" />
-                  <p className="text-xs text-moss-white/60">
-                    {isEventSystemRunning
-                      ? '等待事件生成...'
-                      : '事件系统已停止'}
-                  </p>
-                </div>
+                <EmptyState
+                  icon={AlertCircle}
+                  message={isEventSystemRunning ? '等待事件生成...' : '事件系统已停止'}
+                  className="py-8"
+                />
               ) : (
-                events.map((event) => (
-                  <motion.div
-                    key={event.id}
-                    initial={{ opacity: 0, y: 10 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    className={`
-                      border rounded p-3 cursor-pointer transition-all
-                      ${selectedEvent?.id === event.id
-                        ? 'border-moss-cyan bg-moss-cyan/10 shadow-neon'
-                        : `border-${severityColors[event.severity].replace('text-', '')}/20 hover:border-${severityColors[event.severity].replace('text-', '')}/40`}
-                    `}
-                    onClick={() => setSelectedEvent(event)}
-                  >
-                    <div className="flex items-center justify-between mb-2">
-                      <div className="flex items-center gap-2">
-                        <div className={severityColors[event.severity]}>
-                          {eventIcons[event.type]}
+                events.map((event) => {
+                  const severityStyle = getSeverityStyle(event.severity);
+                  return (
+                    <SelectableCard
+                      key={event.id}
+                      selected={selectedEvent?.id === event.id}
+                      onClick={() => setSelectedEvent(event)}
+                    >
+                      <div className="flex items-center justify-between mb-2">
+                        <div className="flex items-center gap-2">
+                          {renderEventIcon(event)}
+                          <span className="font-medium text-moss-white">
+                            {event.title}
+                          </span>
+                          <span className={`text-xs px-2 py-0.5 rounded ${severityStyle.color}`}>
+                            {severityLabels[event.severity]}
+                          </span>
                         </div>
-                        <span className="font-medium text-moss-white">
-                          {event.title}
-                        </span>
-                        <span className={`text-xs px-2 py-0.5 rounded ${severityColors[event.severity]}`}>
-                          {severityLabels[event.severity]}
-                        </span>
+                        <div className="flex items-center gap-2">
+                          {event.resolved ? (
+                            <CheckCircle className="w-4 h-4 text-cyber-green" />
+                          ) : (
+                            <Clock className="w-4 h-4 text-cyber-orange" />
+                          )}
+                          <span className="text-xs text-moss-white/60">
+                            {event.timestamp.toLocaleTimeString()}
+                          </span>
+                        </div>
                       </div>
-                      <div className="flex items-center gap-2">
-                        {event.resolved ? (
-                          <CheckCircle className="w-4 h-4 text-cyber-green" />
-                        ) : (
-                          <Clock className="w-4 h-4 text-cyber-orange" />
-                        )}
-                        <span className="text-xs text-moss-white/60">
-                          {event.timestamp.toLocaleTimeString()}
-                        </span>
-                      </div>
-                    </div>
-                    <p className="text-xs text-moss-white/60 mb-2">
-                      {event.description}
-                    </p>
-                  </motion.div>
-                ))
+                      <p className="text-xs text-moss-white/60 mb-2">
+                        {event.description}
+                      </p>
+                    </SelectableCard>
+                  );
+                })
               )}
             </div>
           </Panel>
@@ -212,13 +214,11 @@ export const EventMonitor = memo(function EventMonitor() {
                 >
                   <div className="p-4 border border-moss-cyan/20 rounded">
                     <div className="flex items-center gap-2 mb-3">
-                      <div className={severityColors[selectedEvent.severity]}>
-                        {eventIcons[selectedEvent.type]}
-                      </div>
+                      {renderEventIcon(selectedEvent)}
                       <h3 className="font-medium text-moss-white">
                         {selectedEvent.title}
                       </h3>
-                      <span className={`text-xs px-2 py-0.5 rounded ${severityColors[selectedEvent.severity]}`}>
+                      <span className={`text-xs px-2 py-0.5 rounded ${getSeverityStyle(selectedEvent.severity).color}`}>
                         {severityLabels[selectedEvent.severity]}
                       </span>
                     </div>
@@ -226,10 +226,7 @@ export const EventMonitor = memo(function EventMonitor() {
                       <div className="flex justify-between">
                         <span className="text-moss-white/60">类型:</span>
                         <span className="text-moss-white">
-                          {selectedEvent.type === 'system' ? '系统' :
-                           selectedEvent.type === 'security' ? '安全' :
-                           selectedEvent.type === 'performance' ? '性能' :
-                           selectedEvent.type === 'network' ? '网络' : '存储'}
+                          {eventTypeLabels[selectedEvent.type]}
                         </span>
                       </div>
                       <div className="flex justify-between">
@@ -274,12 +271,11 @@ export const EventMonitor = memo(function EventMonitor() {
                   </div>
                 </motion.div>
               ) : (
-                <div className="text-center py-8">
-                  <AlertCircle className="w-12 h-12 mx-auto text-moss-white/30 mb-3" />
-                  <p className="text-xs text-moss-white/60">
-                    选择一个事件查看详情
-                  </p>
-                </div>
+                <EmptyState
+                  icon={AlertCircle}
+                  message="选择一个事件查看详情"
+                  className="py-8"
+                />
               )}
             </AnimatePresence>
           </Panel>

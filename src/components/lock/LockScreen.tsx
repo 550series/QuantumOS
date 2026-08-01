@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState, useCallback, useEffect } from 'react';
+
 import { motion } from 'framer-motion';
 import { Lock, Shield, Fingerprint } from 'lucide-react';
 

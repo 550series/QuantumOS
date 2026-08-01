@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState, useCallback, useEffect } from 'react';
+
 import {
   Folder,
   File,
@@ -12,66 +13,37 @@ import {
   RefreshCw,
   FileText,
 } from 'lucide-react';
-import { fileDB, initDB } from '@/lib/db';
+
+import { Button, EmptyState } from '@/components/ui';
+import { useAsyncInit } from '@/hooks/useAsyncInit';
+import { fileDB, initDB, buildTree, type TreeNode } from '@/lib/db';
 import type { FileNode } from '@/types';
-import { Button } from '@/components/ui';
-
-interface TreeNode extends FileNode {
-  children?: TreeNode[];
-  expanded?: boolean;
-  level: number;
-}
-
-function buildTree(files: FileNode[]): TreeNode[] {
-  const map = new Map<string, TreeNode>();
-  const roots: TreeNode[] = [];
-
-  files.forEach((f) => {
-    map.set(f.id, { ...f, level: 0, expanded: false });
-  });
-
-  files.forEach((f) => {
-    const node = map.get(f.id)!;
-    if (f.parentId && map.has(f.parentId)) {
-      const parent = map.get(f.parentId)!;
-      if (!parent.children) parent.children = [];
-      parent.children.push(node);
-      node.level = parent.level + 1;
-    } else if (!f.parentId) {
-      roots.push(node);
-    }
-  });
-
-  return roots;
-}
 
 export const FileExplorer: React.FC = () => {
-  const [files, setFiles] = useState<FileNode[]>([]);
   const [tree, setTree] = useState<TreeNode[]>([]);
   const [selectedFile, setSelectedFile] = useState<TreeNode | null>(null);
   const [newItemName, setNewItemName] = useState('');
   const [showNewInput, setShowNewInput] = useState<{ parentId: string | null; type: 'file' | 'folder' } | null>(null);
   const [editingContent, setEditingContent] = useState('');
-  const [loading, setLoading] = useState(true);
 
-  const loadFiles = useCallback(async () => {
-    setLoading(true);
-    try {
+  // 初始化：useAsyncInit 收敛 initDB + getAll + buildTree，返回扁平 files 与树
+  const { data, loading, refresh } = useAsyncInit<{ files: FileNode[]; tree: TreeNode[] }>(
+    async () => {
       await initDB();
       const allFiles = await fileDB.getAll();
-      setFiles(allFiles);
-      const fileTree = buildTree(allFiles);
-      setTree(fileTree);
-    } catch (err) {
-      console.error('Failed to load files:', err);
-    } finally {
-      setLoading(false);
-    }
-  }, []);
+      return { files: allFiles, tree: buildTree(allFiles) };
+    },
+    []
+  );
 
+  const files = data?.files ?? [];
+
+  // 树状态由本地维护（折叠/展开），数据刷新后同步
   useEffect(() => {
-    loadFiles();
-  }, [loadFiles]);
+    if (data) {
+      setTree(data.tree);
+    }
+  }, [data]);
 
   useEffect(() => {
     if (selectedFile) {
@@ -116,12 +88,12 @@ export const FileExplorer: React.FC = () => {
         await fileDB.put(newNode);
         setNewItemName('');
         setShowNewInput(null);
-        await loadFiles();
+        refresh();
       } catch (err) {
         console.error('Failed to create:', err);
       }
     },
-    [newItemName, loadFiles]
+    [newItemName, refresh]
   );
 
   const handleDelete = useCallback(
@@ -136,12 +108,12 @@ export const FileExplorer: React.FC = () => {
       try {
         await deleteRecursive(nodeId);
         if (selectedFile?.id === nodeId) setSelectedFile(null);
-        await loadFiles();
+        refresh();
       } catch (err) {
         console.error('Failed to delete:', err);
       }
     },
-    [files, selectedFile, loadFiles]
+    [files, selectedFile, refresh]
   );
 
   const handleSaveContent = useCallback(async () => {
@@ -157,11 +129,11 @@ export const FileExplorer: React.FC = () => {
         level: undefined,
       } as FileNode;
       await fileDB.put(updated);
-      await loadFiles();
+      refresh();
     } catch (err) {
       console.error('Failed to save:', err);
     }
-  }, [selectedFile, editingContent, loadFiles]);
+  }, [selectedFile, editingContent, refresh]);
 
   const renderTreeNode = (node: TreeNode): React.ReactNode => {
     const isFolder = node.type === 'folder';
@@ -222,7 +194,7 @@ export const FileExplorer: React.FC = () => {
             <File className="w-3 h-3" />
           </Button>
           <div className="flex-1" />
-          <Button variant="ghost" size="sm" onClick={loadFiles}>
+          <Button variant="ghost" size="sm" onClick={refresh}>
             <RefreshCw className={`w-3 h-3 ${loading ? 'animate-spin' : ''}`} />
           </Button>
         </div>
@@ -250,10 +222,7 @@ export const FileExplorer: React.FC = () => {
               加载中...
             </div>
           ) : tree.length === 0 ? (
-            <div className="flex flex-col items-center justify-center py-8 text-moss-white/30">
-              <Folder className="w-8 h-8 mb-2 opacity-30" />
-              <p className="font-mono text-xs">暂无文件</p>
-            </div>
+            <EmptyState icon={Folder} message="暂无文件" className="py-8" iconClassName="w-8 h-8" />
           ) : (
             tree.map(renderTreeNode)
           )}

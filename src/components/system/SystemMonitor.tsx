@@ -1,10 +1,8 @@
 'use client';
 
 import React, { memo, useEffect, useState, useRef } from 'react';
+
 import { motion } from 'framer-motion';
-import { Panel } from '@/components/ui/Panel/Panel';
-import { Button } from '@/components/ui/Button/Button';
-import { useSystemStore } from '@/stores';
 import {
   Activity,
   Cpu,
@@ -16,6 +14,11 @@ import {
   Play,
   Pause,
 } from 'lucide-react';
+
+import { Button } from '@/components/ui/Button/Button';
+import { Panel } from '@/components/ui/Panel/Panel';
+import { useSystemStore } from '@/stores';
+
 
 // 系统状态历史数据接口
 interface SystemHistoryData {

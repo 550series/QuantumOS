@@ -1,9 +1,11 @@
 'use client';
 
 import React, { useCallback } from 'react';
+
 import { Settings, Monitor, Bell, Volume2, Globe, RefreshCw, Trash2, Database } from 'lucide-react';
-import { useSystemStore } from '@/stores';
+
 import { Button } from '@/components/ui';
+import { useSystemStore } from '@/stores';
 
 export const SettingsPanel: React.FC = () => {
   const { config, updateConfig } = useSystemStore();

@@ -1,7 +1,8 @@
+import { v4 as uuidv4 } from 'uuid';
+
+import { MOSSDecisionEngine } from '@/lib/ai/decisionEngine';
 import { useSystemStore } from '@/stores';
 import { useAIStore } from '@/stores';
-import { MOSSDecisionEngine } from '@/lib/ai/decisionEngine';
-import { v4 as uuidv4 } from 'uuid';
 
 // 场景类型
 export type ScenarioType = 'normal' | 'emergency' | 'warning' | 'optimization';

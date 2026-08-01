@@ -1,8 +1,9 @@
 import { create } from 'zustand';
-import { immer } from 'zustand/middleware/immer';
 import { persist } from 'zustand/middleware';
-import type { Window, SystemStatus, SystemConfig, Notification } from '@/types';
+import { immer } from 'zustand/middleware/immer';
+
 import { defaultSettings } from '@/lib/db';
+import type { Window, SystemStatus, SystemConfig, Notification } from '@/types';
 
 interface SystemState {
   // 系统状态
@@ -20,6 +21,10 @@ interface SystemState {
   isBooting: boolean;
   bootProgress: number;
   bootStage: string;
+
+  // 锁屏状态（issue #31：从 desktop/page.tsx 上移到 store，
+  // 刷新页面后可从 persist 恢复，其他组件也可订阅感知）
+  isLocked: boolean;
 
   // 操作方法
   updateStatus: (status: Partial<SystemStatus>) => void;
@@ -41,6 +46,9 @@ interface SystemState {
 
   // 启动操作
   setBootState: (isBooting: boolean, progress?: number, stage?: string) => void;
+
+  // 锁屏操作
+  setLocked: (locked: boolean) => void;
 }
 
 export const useSystemStore = create<SystemState>()(
@@ -74,6 +82,7 @@ export const useSystemStore = create<SystemState>()(
     isBooting: true,
     bootProgress: 0,
     bootStage: 'init',
+    isLocked: false,
 
     // 状态更新
     updateStatus: (status) =>
@@ -191,11 +200,17 @@ export const useSystemStore = create<SystemState>()(
         if (progress !== undefined) state.bootProgress = progress;
         if (stage !== undefined) state.bootStage = stage;
       }),
+
+    // 锁屏操作
+    setLocked: (locked) =>
+      set((state) => {
+        state.isLocked = locked;
+      }),
     })),
     {
       name: 'quantumos-system',
-      // 仅持久化用户设置，状态/窗口/通知等运行时数据不持久化
-      partialize: (state) => ({ config: state.config }),
+      // 持久化用户设置与锁屏状态（issue #31：刷新后保持锁屏）
+      partialize: (state) => ({ config: state.config, isLocked: state.isLocked }),
     }
   )
 );
