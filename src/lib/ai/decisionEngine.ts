@@ -318,7 +318,8 @@ export class MOSSDecisionEngine {
       reasoning,
       recommendation,
       autoExecuted: recommendation.urgency === 'low',
-      humanApproval: recommendation.urgency !== 'low' ? null : null,
+      // 低紧急度决策自动执行无需人工审批；高紧急度决策需待审批
+      humanApproval: recommendation.urgency !== 'low' ? null : true,
       status: recommendation.urgency === 'low' ? 'executed' : 'pending',
     };
 

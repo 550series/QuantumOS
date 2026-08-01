@@ -1,3 +1,8 @@
+/**
+ * @WIP 占位实现
+ * 当前使用模块级内存数组（mockTasks），数据不持久化，前端未接入。
+ * 客户端走 src/services/ + IndexedDB。待后续接入服务端持久层。
+ */
 import { NextRequest, NextResponse } from 'next/server';
 import { v4 as uuidv4 } from 'uuid';
 import { Task } from '@/types';

@@ -105,7 +105,7 @@ QuantumOS/
 │   ├── components/             # React组件
 │   │   ├── boot/              # 启动动画（CodeRain、MossEye等）
 │   │   ├── desktop/           # 桌面系统（WindowManager、Taskbar等）
-│   │   ├── file-manager/      # 文件管理器
+│   │   ├── file-explorer/     # 文件管理器
 │   │   ├── task-scheduler/    # 任务调度器
 │   │   ├── ai-system/         # AI决策中心
 │   │   ├── system/            # 日志与警报系统
@@ -113,14 +113,14 @@ QuantumOS/
 │   │
 │   ├── stores/                 # Zustand状态管理
 │   │   ├── systemStore.ts     # 系统全局状态
-│   │   ├── fileStore.ts       # 文件系统状态
 │   │   ├── taskStore.ts       # 任务调度状态
 │   │   └── aiStore.ts         # AI决策状态
-│   │
+│
 │   ├── services/               # 服务层
-│   │   ├── fileService.ts     # 文件系统服务
-│   │   ├── taskService.ts     # 任务调度服务
-│   │   └── logService.ts      # 日志与警报服务
+│   │   ├── eventService.ts    # 事件生成服务
+│   │   ├── logService.ts      # 日志与警报服务
+│   │   ├── simulationService.ts # 场景模拟服务
+│   │   └── taskService.ts     # 任务调度服务
 │   │
 │   ├── lib/                    # 工具库
 │   │   ├── db/                # IndexedDB封装
@@ -149,15 +149,13 @@ QuantumOS/
 - 虚拟文件系统 (VFS) 模拟
 - 文件/文件夹 CRUD 操作（IndexedDB存储）
 - 文件预览（文本、图片、代码）
-- 拖拽交互、搜索过滤
-- 网格/列表视图切换
+- 搜索过滤
 
 ### 3. 任务调度系统
 - 任务创建、配置、执行
 - 任务队列管理
-- 实时状态监控（WebSocket推送）
+- 实时状态监控
 - 资源占用可视化
-- 任务依赖关系图
 
 ### 4. AI智能决策系统（MOSS核心）
 - **决策引擎** - 基于规则的智能决策模拟
@@ -169,7 +167,7 @@ QuantumOS/
 - 实时日志流显示
 - 多级别日志过滤（INFO/WARNING/ERROR/CRITICAL）
 - 警报弹窗通知
-- 日志搜索与导出
+- 日志搜索
 
 ---
 
@@ -197,29 +195,22 @@ QuantumOS/
 
 ## 🔌 API设计
 
+> ⚠️ **WIP（开发中）**：当前 API 层为占位实现，使用模块级内存数组，数据不持久化且前端未接入。客户端主要走 `src/services/` + IndexedDB。以下为已存在的路由骨架。
+
 ### RESTful API
 ```
 GET    /api/files              # 获取文件列表
 POST   /api/files              # 创建文件/文件夹
-PUT    /api/files/:id          # 更新文件
-DELETE /api/files/:id          # 删除文件
 
 GET    /api/tasks              # 获取任务列表
 POST   /api/tasks              # 创建任务
-POST   /api/tasks/:id/start    # 启动任务
-POST   /api/tasks/:id/cancel   # 取消任务
+GET    /api/tasks/:id          # 获取任务详情
+PUT    /api/tasks/:id          # 更新任务
+DELETE /api/tasks/:id          # 删除任务
 
 GET    /api/ai/decisions       # 获取决策历史
-POST   /api/ai/analyze         # 触发分析
-POST   /api/ai/decisions/:id/approve  # 批准决策
-```
-
-### WebSocket事件
-```
-task:created    - 任务创建
-task:updated    - 任务更新
-ai:decision     - 新决策生成
-system:alert    - 系统警报
+POST   /api/ai/decisions       # 创建决策
+POST   /api/ai/decisions/:id   # 批准/拒绝决策（body: { action: 'approve' | 'reject' }）
 ```
 
 ---
