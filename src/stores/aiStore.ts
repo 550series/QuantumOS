@@ -61,6 +61,7 @@ export const useAIStore = create<AIState>()(
     setDecisions: (decisions) =>
       set((state) => {
         state.decisions = decisions;
+        state.metrics.decisionsCount = decisions.length;
       }),
 
     addDecision: (decision) =>
@@ -127,5 +128,5 @@ export const useAIStore = create<AIState>()(
       set((state) => {
         state.error = error;
       }),
-  }))
+  })),
 );
