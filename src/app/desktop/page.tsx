@@ -1,56 +1,54 @@
 'use client';
 
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { useCallback, useState } from 'react';
+
 import { motion, AnimatePresence } from 'framer-motion';
-import { useSystemStore } from '@/stores';
-import { DesktopIcons, WindowManager, Taskbar, type AppType, appConfig, ContextMenu } from '@/components/desktop';
+
+import {
+  DesktopIcons,
+  WindowManager,
+  Taskbar,
+  ContextMenu,
+  appConfig,
+  type AppType,
+  useClock,
+  useSystemStatusPolling,
+  useDesktopShortcutsWithStore,
+} from '@/components/desktop';
 import { LockScreen } from '@/components/lock/LockScreen';
+import { useSystemStore } from '@/stores';
 
 export default function DesktopPage() {
-  const { setBootState, updateStatus, openWindow, addNotification } = useSystemStore();
-  const [currentTime, setCurrentTime] = useState<Date | null>(null);
+  const openWindow = useSystemStore((s) => s.openWindow);
+  const addNotification = useSystemStore((s) => s.addNotification);
+  const isLocked = useSystemStore((s) => s.isLocked);
+  const setLocked = useSystemStore((s) => s.setLocked);
+
+  // issue #31：时钟、状态轮询、快捷键均抽离为独立 hook
+  const currentTime = useClock();
+  useSystemStatusPolling();
+
   const [startMenuOpen, setStartMenuOpen] = useState(false);
   const [contextMenu, setContextMenu] = useState<{ x: number; y: number } | null>(null);
-  const [isLocked, setIsLocked] = useState(false);
 
-  useEffect(() => {
-    setCurrentTime(new Date());
-    setBootState(false, 100, 'complete');
-
-    // uptime 由桌面单一维护（单调递增），cpu/内存/网络等指标交由
-    // SystemMonitor 与 simulationService 写入，避免多数据源互相覆盖
-    const bootTime = Date.now();
-    const updateUptime = () => {
-      updateStatus({ uptime: Math.floor((Date.now() - bootTime) / 1000) });
-    };
-    updateUptime();
-    const statusInterval = setInterval(updateUptime, 5000);
-
-    const timeInterval = setInterval(() => {
-      setCurrentTime(new Date());
-    }, 1000);
-
-    return () => {
-      clearInterval(statusInterval);
-      clearInterval(timeInterval);
-    };
-  }, [setBootState, updateStatus]);
-
-  const handleOpenApp = useCallback((appType: AppType) => {
-    const config = appConfig[appType];
-    openWindow({
-      title: config.title,
-      type: appType,
-      isMinimized: false,
-      isMaximized: false,
-      position: { x: 100 + Math.random() * 200, y: 50 + Math.random() * 100 },
-      size: config.defaultSize,
-    });
-    setStartMenuOpen(false);
-  }, [openWindow]);
+  const handleOpenApp = useCallback(
+    (appType: AppType) => {
+      const config = appConfig[appType];
+      openWindow({
+        title: config.title,
+        type: appType,
+        isMinimized: false,
+        isMaximized: false,
+        position: { x: 100 + Math.random() * 200, y: 50 + Math.random() * 100 },
+        size: config.defaultSize,
+      });
+      setStartMenuOpen(false);
+    },
+    [openWindow]
+  );
 
   const handleToggleStartMenu = useCallback(() => {
-    setStartMenuOpen(prev => !prev);
+    setStartMenuOpen((prev) => !prev);
   }, []);
 
   const handleContextMenu = useCallback((e: React.MouseEvent) => {
@@ -70,99 +68,22 @@ export default function DesktopPage() {
     });
   }, [addNotification]);
 
-  const handleNewTask = useCallback(() => {
-    handleOpenApp('task-scheduler');
-  }, [handleOpenApp]);
-
-  const handleOpenTerminal = useCallback(() => {
-    handleOpenApp('moss-terminal');
-  }, [handleOpenApp]);
-
-  const handleOpenSettings = useCallback(() => {
-    handleOpenApp('settings');
-  }, [handleOpenApp]);
-
-  const handleOpenFileExplorer = useCallback(() => {
-    handleOpenApp('file-explorer');
-  }, [handleOpenApp]);
-
+  // issue #31：锁屏状态上移到 store，刷新后可从 persist 恢复
   const handleLock = useCallback(() => {
-    setIsLocked(true);
-  }, []);
+    setLocked(true);
+  }, [setLocked]);
 
   const handleUnlock = useCallback(() => {
-    setIsLocked(false);
+    setLocked(false);
     addNotification({
       title: '系统已解锁',
       message: 'MOSS 量子操作系统已成功解锁，欢迎回来。',
       type: 'success',
     });
-  }, [addNotification]);
+  }, [setLocked, addNotification]);
 
-  useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if (isLocked) return;
-
-      const key = e.key.toLowerCase();
-
-      if (e.ctrlKey && e.shiftKey && key === 't') {
-        e.preventDefault();
-        handleOpenApp('moss-terminal');
-        return;
-      }
-
-      if (e.ctrlKey && e.shiftKey && key === 'n') {
-        e.preventDefault();
-        handleOpenApp('notification-center');
-        return;
-      }
-
-      if (e.ctrlKey && e.shiftKey && key === 'f') {
-        e.preventDefault();
-        handleOpenApp('file-explorer');
-        return;
-      }
-
-      if (e.ctrlKey && e.shiftKey && key === 's') {
-        e.preventDefault();
-        handleOpenApp('settings');
-        return;
-      }
-
-      if (e.ctrlKey && e.shiftKey && key === 'a') {
-        e.preventDefault();
-        handleOpenApp('ai-center');
-        return;
-      }
-
-      if (e.ctrlKey && e.shiftKey && key === 'j') {
-        e.preventDefault();
-        handleOpenApp('task-scheduler');
-        return;
-      }
-
-      if (e.ctrlKey && e.shiftKey && key === 'l') {
-        e.preventDefault();
-        handleOpenApp('log-viewer');
-        return;
-      }
-
-      if (e.ctrlKey && e.shiftKey && key === 'm') {
-        e.preventDefault();
-        handleOpenApp('system-monitor');
-        return;
-      }
-
-      if (e.ctrlKey && e.shiftKey && key === 'k') {
-        e.preventDefault();
-        setIsLocked(true);
-        return;
-      }
-    };
-
-    window.addEventListener('keydown', handleKeyDown);
-    return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [isLocked, handleOpenApp]);
+  // issue #31：快捷键改配置表驱动，锁屏时自动禁用
+  useDesktopShortcutsWithStore(handleOpenApp, handleLock);
 
   return (
     <>
@@ -217,10 +138,10 @@ export default function DesktopPage() {
             y={contextMenu.y}
             onClose={handleCloseContextMenu}
             onRefresh={handleRefresh}
-            onNewTask={handleNewTask}
-            onOpenTerminal={handleOpenTerminal}
-            onOpenSettings={handleOpenSettings}
-            onOpenFileExplorer={handleOpenFileExplorer}
+            onNewTask={() => handleOpenApp('task-scheduler')}
+            onOpenTerminal={() => handleOpenApp('moss-terminal')}
+            onOpenSettings={() => handleOpenApp('settings')}
+            onOpenFileExplorer={() => handleOpenApp('file-explorer')}
             onLock={handleLock}
           />
         )}

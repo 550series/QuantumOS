@@ -1,9 +1,11 @@
 'use client';
 
 import React, { memo, useEffect, useRef, useState } from 'react';
-import dynamic from 'next/dynamic';
+
 import { motion, AnimatePresence } from 'framer-motion';
+import dynamic from 'next/dynamic';
 import { useRouter } from 'next/navigation';
+
 import { CodeRain } from './CodeRain';
 import { SystemStatus } from './SystemStatus';
 

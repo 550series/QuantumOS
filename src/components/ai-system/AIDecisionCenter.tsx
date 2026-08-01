@@ -1,8 +1,22 @@
 'use client';
 
-import React, { memo, useEffect, useState } from 'react';
+import React, { memo, useState } from 'react';
+
 import { motion, AnimatePresence } from 'framer-motion';
-import { useAIStore } from '@/stores';
+import {
+  Brain,
+  CheckCircle,
+  XCircle,
+  Clock,
+  TrendingUp,
+  Cpu,
+  Activity,
+} from 'lucide-react';
+
+import { SelectableCard } from '@/components/ui';
+import { Button } from '@/components/ui/Button/Button';
+import { Panel } from '@/components/ui/Panel/Panel';
+import { useAsyncInit } from '@/hooks/useAsyncInit';
 import {
   initDefaultDecisions,
   getDecisions,
@@ -11,20 +25,10 @@ import {
   getMossAnalysisMessage,
   getMossInfoMessage,
 } from '@/lib/ai/decisionEngine';
-import { Panel } from '@/components/ui/Panel/Panel';
-import { Button } from '@/components/ui/Button/Button';
+import { getUrgencyStyle } from '@/lib/theme/severityTheme';
+import { useAIStore } from '@/stores';
 import type { AIDecision } from '@/types';
-import {
-  Brain,
-  CheckCircle,
-  XCircle,
-  Clock,
-  AlertTriangle,
-  TrendingUp,
-  Cpu,
-  Activity,
-  Zap,
-} from 'lucide-react';
+
 
 // 决策类型映射
 const decisionTypeNames = {
@@ -36,13 +40,6 @@ const decisionTypeNames = {
   energy_optimization: '能源优化',
 };
 
-const urgencyColors = {
-  low: 'text-moss-white/60',
-  medium: 'text-cyber-orange',
-  high: 'text-cyber-red',
-  critical: 'text-cyber-red animate-pulse',
-};
-
 export const AIDecisionCenter = memo(function AIDecisionCenter() {
   const {
     decisions,
@@ -51,6 +48,8 @@ export const AIDecisionCenter = memo(function AIDecisionCenter() {
     isThinking,
     metrics,
     setDecisions,
+    addDecision,
+    updateDecision,
     addMessage,
     setActive,
     setThinking,
@@ -60,9 +59,9 @@ export const AIDecisionCenter = memo(function AIDecisionCenter() {
   const [selectedDecision, setSelectedDecision] = useState<AIDecision | null>(null);
   const [mossGreeting, setMossGreeting] = useState('');
 
-  // 初始化
-  useEffect(() => {
-    const init = async () => {
+  // 初始化：useAsyncInit 收敛 initDefault + 拉取，回调中完成 store 写入与指标更新
+  useAsyncInit<AIDecision[]>(
+    async () => {
       await initDefaultDecisions();
       const decisions = await getDecisions();
       setDecisions(decisions);
@@ -85,17 +84,19 @@ export const AIDecisionCenter = memo(function AIDecisionCenter() {
           decisions.reduce((sum, d) => sum + d.confidence, 0) / decisions.length,
         responseTime: 250,
       });
-    };
-    init();
-  }, [setDecisions, setActive, addMessage, updateMetrics]);
 
-  // 批准决策
+      return decisions;
+    },
+    [setDecisions, setActive, addMessage, updateMetrics]
+  );
+
+  // 批准决策：基于 service 返回值直接更新 store，避免二次查询
   const handleApprove = async (decisionId: string) => {
     setThinking(true);
-    await MOSSDecisionEngine.approveDecision(decisionId, 'user');
-
-    const updated = await getDecisions();
-    setDecisions(updated);
+    const updated = await MOSSDecisionEngine.approveDecision(decisionId, 'user');
+    if (updated) {
+      updateDecision(decisionId, updated);
+    }
     setSelectedDecision(null);
     setThinking(false);
 
@@ -105,13 +106,13 @@ export const AIDecisionCenter = memo(function AIDecisionCenter() {
     });
   };
 
-  // 拒绝决策
+  // 拒绝决策：基于 service 返回值直接更新 store，避免二次查询
   const handleReject = async (decisionId: string) => {
     setThinking(true);
-    await MOSSDecisionEngine.rejectDecision(decisionId);
-
-    const updated = await getDecisions();
-    setDecisions(updated);
+    const updated = await MOSSDecisionEngine.rejectDecision(decisionId);
+    if (updated) {
+      updateDecision(decisionId, updated);
+    }
     setSelectedDecision(null);
     setThinking(false);
 
@@ -142,6 +143,9 @@ export const AIDecisionCenter = memo(function AIDecisionCenter() {
     const decision = await MOSSDecisionEngine.analyze(input);
 
     if (decision) {
+      // addDecision 内部已维护 decisionsCount 指标，避免二次查询
+      addDecision(decision);
+
       addMessage({
         type: 'decision',
         content: `${getMossMessage('decision')}新决策已生成：${decisionTypeNames[decision.type]}`,
@@ -151,12 +155,6 @@ export const AIDecisionCenter = memo(function AIDecisionCenter() {
       addMessage({
         type: 'info',
         content: getMossAnalysisMessage(),
-      });
-
-      const updated = await getDecisions();
-      setDecisions(updated);
-      updateMetrics({
-        decisionsCount: updated.length,
       });
     } else {
       addMessage({
@@ -272,63 +270,58 @@ export const AIDecisionCenter = memo(function AIDecisionCenter() {
       <div className="flex-1 flex flex-col gap-4">
         <Panel title="决策历史" className="flex-1 overflow-hidden">
           <div className="space-y-3 h-full overflow-auto pr-2">
-            {decisions.map((decision) => (
-              <motion.div
-                key={decision.id}
-                initial={{ opacity: 0, y: 10 }}
-                animate={{ opacity: 1, y: 0 }}
-                className={`
-                  border rounded p-3 cursor-pointer transition-all
-                  ${
-                    selectedDecision?.id === decision.id
-                      ? 'border-moss-cyan bg-moss-cyan/10 shadow-neon'
-                      : 'border-moss-cyan/20 hover:border-moss-cyan/40'
-                  }
-                `}
-                onClick={() => setSelectedDecision(decision)}
-              >
-                <div className="flex items-center justify-between mb-2">
-                  <div className="flex items-center gap-2">
-                    <Zap className={`w-4 h-4 ${urgencyColors[decision.recommendation.urgency]}`} />
-                    <span className="font-medium text-moss-white">
-                      {decisionTypeNames[decision.type]}
-                    </span>
+            {decisions.map((decision) => {
+              const urgencyStyle = getUrgencyStyle(decision.recommendation.urgency);
+              const UrgencyIcon = urgencyStyle.icon;
+              return (
+                <SelectableCard
+                  key={decision.id}
+                  selected={selectedDecision?.id === decision.id}
+                  onClick={() => setSelectedDecision(decision)}
+                >
+                  <div className="flex items-center justify-between mb-2">
+                    <div className="flex items-center gap-2">
+                      <UrgencyIcon className={`w-4 h-4 ${urgencyStyle.color}`} />
+                      <span className="font-medium text-moss-white">
+                        {decisionTypeNames[decision.type]}
+                      </span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <span className="text-xs text-moss-white/60">
+                        {(decision.confidence * 100).toFixed(0)}%
+                      </span>
+                      {decision.status === 'executed' && (
+                        <CheckCircle className="w-4 h-4 text-cyber-green" />
+                      )}
+                      {decision.status === 'pending' && (
+                        <Clock className="w-4 h-4 text-cyber-orange" />
+                      )}
+                      {decision.status === 'rejected' && (
+                        <XCircle className="w-4 h-4 text-cyber-red" />
+                      )}
+                    </div>
                   </div>
-                  <div className="flex items-center gap-2">
-                    <span className="text-xs text-moss-white/60">
-                      {(decision.confidence * 100).toFixed(0)}%
-                    </span>
-                    {decision.status === 'executed' && (
-                      <CheckCircle className="w-4 h-4 text-cyber-green" />
-                    )}
-                    {decision.status === 'pending' && (
-                      <Clock className="w-4 h-4 text-cyber-orange" />
-                    )}
-                    {decision.status === 'rejected' && (
-                      <XCircle className="w-4 h-4 text-cyber-red" />
-                    )}
-                  </div>
-                </div>
 
-                <p className="text-xs text-moss-white/60 mb-2">
-                  {decision.recommendation.impact.description}
-                </p>
+                  <p className="text-xs text-moss-white/60 mb-2">
+                    {decision.recommendation.impact.description}
+                  </p>
 
-                <div className="flex items-center gap-3 text-xs text-moss-white/60">
-                  <div className="flex items-center gap-1">
-                    <TrendingUp className="w-3 h-3" />
-                    <span>
-                      性能{decision.recommendation.impact.performance > 0 ? '+' : ''}
-                      {decision.recommendation.impact.performance}%
-                    </span>
+                  <div className="flex items-center gap-3 text-xs text-moss-white/60">
+                    <div className="flex items-center gap-1">
+                      <TrendingUp className="w-3 h-3" />
+                      <span>
+                        性能{decision.recommendation.impact.performance > 0 ? '+' : ''}
+                        {decision.recommendation.impact.performance}%
+                      </span>
+                    </div>
+                    <div className="flex items-center gap-1">
+                      <Cpu className="w-3 h-3" />
+                      <span>稳定性+{decision.recommendation.impact.stability}%</span>
+                    </div>
                   </div>
-                  <div className="flex items-center gap-1">
-                    <Cpu className="w-3 h-3" />
-                    <span>稳定性+{decision.recommendation.impact.stability}%</span>
-                  </div>
-                </div>
-              </motion.div>
-            ))}
+                </SelectableCard>
+              );
+            })}
           </div>
         </Panel>
 

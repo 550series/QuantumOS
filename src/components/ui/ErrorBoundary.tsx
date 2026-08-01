@@ -2,6 +2,8 @@
 
 import React from 'react';
 
+import { reportError } from '@/lib/monitoring';
+
 interface ErrorBoundaryProps {
   children: React.ReactNode;
   fallback?: React.ReactNode;
@@ -23,8 +25,8 @@ export class ErrorBoundary extends React.Component<ErrorBoundaryProps, ErrorBoun
   }
 
   componentDidCatch(error: Error, errorInfo: React.ErrorInfo): void {
-    // 上报错误，便于排查（与 #30 监控基建联动时可替换为 Sentry 等）。
-    console.error('[ErrorBoundary] 捕获到渲染异常:', error, errorInfo);
+    // 上报渲染异常（issue #30：接入 monitoring 基建，便于后续替换为 Sentry 等）。
+    reportError(error, errorInfo.componentStack);
   }
 
   render() {

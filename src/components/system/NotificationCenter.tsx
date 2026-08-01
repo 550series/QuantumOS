@@ -1,16 +1,12 @@
 'use client';
 
 import React, { useCallback } from 'react';
-import { Bell, CheckCircle, AlertTriangle, XCircle, Info, Trash2 } from 'lucide-react';
-import { useSystemStore } from '@/stores';
-import { Button } from '@/components/ui';
 
-const typeConfig = {
-  info: { icon: Info, color: 'text-moss-cyan', bg: 'bg-moss-cyan/10', border: 'border-moss-cyan/30' },
-  success: { icon: CheckCircle, color: 'text-cyber-green', bg: 'bg-cyber-green/10', border: 'border-cyber-green/30' },
-  warning: { icon: AlertTriangle, color: 'text-cyber-orange', bg: 'bg-cyber-orange/10', border: 'border-cyber-orange/30' },
-  error: { icon: XCircle, color: 'text-cyber-red', bg: 'bg-cyber-red/10', border: 'border-cyber-red/30' },
-};
+import { Bell, Trash2 } from 'lucide-react';
+
+import { Button, EmptyState } from '@/components/ui';
+import { getNotificationStyle } from '@/lib/theme/severityTheme';
+import { useSystemStore } from '@/stores';
 
 export const NotificationCenter: React.FC = () => {
   const { notifications, markNotificationRead, clearNotifications } = useSystemStore();
@@ -47,14 +43,16 @@ export const NotificationCenter: React.FC = () => {
       </div>
 
       {notifications.length === 0 ? (
-        <div className="flex flex-col items-center justify-center py-16 text-moss-white/40">
-          <Bell className="w-12 h-12 mb-3 opacity-30" />
-          <p className="font-mono text-sm">暂无通知</p>
-        </div>
+        <EmptyState
+          icon={Bell}
+          message="暂无通知"
+          className="py-16"
+          iconClassName="w-12 h-12"
+        />
       ) : (
         <div className="space-y-2 max-h-[calc(100vh-300px)] overflow-y-auto">
           {notifications.map((notification) => {
-            const config = typeConfig[notification.type];
+            const config = getNotificationStyle(notification.type);
             const Icon = config.icon;
 
             return (

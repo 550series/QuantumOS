@@ -1,11 +1,8 @@
 'use client';
 
 import React, { memo, useEffect, useState } from 'react';
+
 import { motion } from 'framer-motion';
-import { Panel } from '@/components/ui/Panel/Panel';
-import { Button } from '@/components/ui/Button/Button';
-import { SimulationSystem, ScenarioType } from '@/services/simulationService';
-import { useSystemStore } from '@/stores';
 import {
   Play,
   Pause,
@@ -16,6 +13,12 @@ import {
   Clock,
   Activity,
 } from 'lucide-react';
+
+import { Button } from '@/components/ui/Button/Button';
+import { Panel } from '@/components/ui/Panel/Panel';
+import { SimulationSystem, ScenarioType } from '@/services/simulationService';
+import { useSystemStore } from '@/stores';
+
 
 const scenarioIcons = {
   normal: <TrendingUp className="w-4 h-4" />,

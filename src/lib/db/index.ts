@@ -1,4 +1,6 @@
+export * from './buildTree';
 import { openDB, DBSchema, IDBPDatabase } from 'idb';
+
 import type { FileNode, Task, AIDecision, LogEntry, Alert, SystemConfig } from '@/types';
 
 // 数据库Schema定义

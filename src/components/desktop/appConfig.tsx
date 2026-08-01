@@ -1,6 +1,7 @@
 import React from 'react';
-import dynamic from 'next/dynamic';
+
 import { Activity, Brain, Terminal, Bell, Settings, AlertCircle, FolderOpen } from 'lucide-react';
+import dynamic from 'next/dynamic';
 
 // 应用组件按需懒加载，避免首屏 chunk 致肿（含 Three.js / MossEye 等重型依赖）。
 // ssr:false：这些组件仅由客户端 WindowManager 在打开窗口时渲染，无需 SSR。

@@ -1,6 +1,9 @@
-import type { Metadata } from 'next';
 import { JetBrains_Mono, Orbitron } from 'next/font/google';
+
 import { ErrorBoundary } from '@/components/ui';
+import { WebVitals } from '@/components/WebVitals';
+
+import type { Metadata } from 'next';
 import './globals.css';
 
 const jetbrainsMono = JetBrains_Mono({
@@ -29,7 +32,12 @@ export default function RootLayout({
 }) {
   return (
     <html lang="zh-CN" className={`${jetbrainsMono.variable} ${orbitron.variable}`}>
-      <body className="crt-effect"><ErrorBoundary>{children}</ErrorBoundary></body>
+      <body className="crt-effect">
+        <ErrorBoundary>
+          <WebVitals />
+          {children}
+        </ErrorBoundary>
+      </body>
     </html>
   );
 }

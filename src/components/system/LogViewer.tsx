@@ -1,8 +1,18 @@
 'use client';
 
 import React, { memo, useEffect, useMemo, useState } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
-import { Panel, Button } from '@/components/ui';
+
+import { motion } from 'framer-motion';
+import {
+  Terminal,
+  Filter,
+  Trash2,
+  RefreshCw,
+} from 'lucide-react';
+
+import { Panel, Button, EmptyState } from '@/components/ui';
+import { useAsyncInit } from '@/hooks/useAsyncInit';
+import { getSeverityStyle } from '@/lib/theme/severityTheme';
 import {
   getLogs,
   clearLogs,
@@ -10,24 +20,6 @@ import {
   filterLogs,
 } from '@/services/logService';
 import type { LogEntry, LogLevel, LogCategory } from '@/types';
-import {
-  Info,
-  AlertTriangle,
-  AlertCircle,
-  Zap,
-  Terminal,
-  Filter,
-  Trash2,
-  RefreshCw,
-} from 'lucide-react';
-
-// 级别图标和颜色
-const levelConfig = {
-  info: { icon: <Info className="w-4 h-4" />, color: 'text-moss-cyan', bg: 'bg-moss-cyan/10' },
-  warning: { icon: <AlertTriangle className="w-4 h-4" />, color: 'text-cyber-orange', bg: 'bg-cyber-orange/10' },
-  error: { icon: <AlertCircle className="w-4 h-4" />, color: 'text-cyber-red', bg: 'bg-cyber-red/10' },
-  critical: { icon: <Zap className="w-4 h-4" />, color: 'text-cyber-red animate-pulse', bg: 'bg-cyber-red/20' },
-};
 
 const categoryNames = {
   system: '系统',
@@ -38,41 +30,35 @@ const categoryNames = {
 };
 
 export const LogViewer = memo(function LogViewer() {
-  const [logs, setLogs] = useState<LogEntry[]>([]);
-  const [loading, setLoading] = useState(false);
   const [selectedLevel, setSelectedLevel] = useState<LogLevel | 'all'>('all');
   const [selectedCategory, setSelectedCategory] = useState<LogCategory | 'all'>('all');
   const [searchQuery, setSearchQuery] = useState('');
   const [autoRefresh, setAutoRefresh] = useState(true);
 
-  // 初始化日志
-  useEffect(() => {
-    const init = async () => {
-      setLoading(true);
+  // 初始化日志：useAsyncInit 收敛 initDefault + 拉取
+  const { data: logs, loading, refresh } = useAsyncInit<LogEntry[]>(
+    async () => {
       await initDefaultLogs();
-      const logs = await getLogs(200);
-      setLogs(logs);
-      setLoading(false);
-    };
-    init();
-  }, []);
+      return getLogs(200);
+    },
+    []
+  );
 
-  // 自动刷新
+  // 自动刷新：复用 useAsyncInit.refresh，保持单一数据通道
   useEffect(() => {
     if (!autoRefresh) return;
 
-    const interval = setInterval(async () => {
-      const logs = await getLogs(200);
-      setLogs(logs);
+    const interval = setInterval(() => {
+      refresh();
     }, 10000);
 
     return () => clearInterval(interval);
-  }, [autoRefresh]);
+  }, [autoRefresh, refresh]);
 
   // 过滤日志：改用 useMemo，避免 effect 内重复 setState 触发额外渲染
   const filteredLogs = useMemo(
     () => filterLogs(
-      logs,
+      logs ?? [],
       selectedLevel === 'all' ? undefined : selectedLevel,
       selectedCategory === 'all' ? undefined : selectedCategory,
       searchQuery
@@ -80,18 +66,10 @@ export const LogViewer = memo(function LogViewer() {
     [logs, selectedLevel, selectedCategory, searchQuery]
   );
 
-  // 清空日志
+  // 清空日志：基于返回值更新本地数据，避免二次查询
   const handleClear = async () => {
     await clearLogs();
-    setLogs([]);
-  };
-
-  // 刷新日志
-  const handleRefresh = async () => {
-    setLoading(true);
-    const logs = await getLogs(200);
-    setLogs(logs);
-    setLoading(false);
+    refresh();
   };
 
   return (
@@ -107,7 +85,7 @@ export const LogViewer = memo(function LogViewer() {
           >
             <RefreshCw className={`w-4 h-4 ${autoRefresh ? 'animate-spin' : ''}`} />
           </Button>
-          <Button variant="secondary" size="sm" onClick={handleRefresh}>
+          <Button variant="secondary" size="sm" onClick={refresh}>
             <RefreshCw className="w-4 h-4" />
           </Button>
           <Button variant="danger" size="sm" onClick={handleClear}>
@@ -164,63 +142,64 @@ export const LogViewer = memo(function LogViewer() {
             加载中...
           </div>
         ) : (
-          filteredLogs.map((log) => (
-            <motion.div
-              key={log.id}
-              initial={{ opacity: 0, x: -10 }}
-              animate={{ opacity: 1, x: 0 }}
-              className={`
-                flex items-start gap-2 p-2 rounded border
-                ${
-                  log.level === 'critical'
-                    ? 'border-cyber-red/50 bg-cyber-red/5'
-                    : 'border-transparent hover:border-moss-cyan/20'
-                }
-              `}
-            >
-              {/* 级别图标 */}
-              <div className={`${levelConfig[log.level].color} mt-0.5`}>
-                {levelConfig[log.level].icon}
-              </div>
+          filteredLogs.map((log) => {
+            const levelStyle = getSeverityStyle(log.level);
+            const LevelIcon = levelStyle.icon;
+            return (
+              <motion.div
+                key={log.id}
+                initial={{ opacity: 0, x: -10 }}
+                animate={{ opacity: 1, x: 0 }}
+                className={`
+                  flex items-start gap-2 p-2 rounded border
+                  ${
+                    log.level === 'critical'
+                      ? 'border-cyber-red/50 bg-cyber-red/5'
+                      : 'border-transparent hover:border-moss-cyan/20'
+                  }
+                `}
+              >
+                {/* 级别图标 */}
+                <div className={`${levelStyle.color} mt-0.5`}>
+                  <LevelIcon className="w-4 h-4" />
+                </div>
 
-              {/* 时间戳 */}
-              <div className="text-moss-white/40 whitespace-nowrap">
-                {new Date(log.timestamp).toLocaleTimeString('zh-CN')}
-              </div>
+                {/* 时间戳 */}
+                <div className="text-moss-white/40 whitespace-nowrap">
+                  {new Date(log.timestamp).toLocaleTimeString('zh-CN')}
+                </div>
 
-              {/* 来源 */}
-              <div className="text-moss-cyan whitespace-nowrap">[{log.source}]</div>
+                {/* 来源 */}
+                <div className="text-moss-cyan whitespace-nowrap">[{log.source}]</div>
 
-              {/* 消息 */}
-              <div className="flex-1 text-moss-white/80">{log.message}</div>
+                {/* 消息 */}
+                <div className="flex-1 text-moss-white/80">{log.message}</div>
 
-              {/* 类别 */}
-              <div className="text-moss-white/40 whitespace-nowrap">
-                {categoryNames[log.category]}
-              </div>
-            </motion.div>
-          ))
+                {/* 类别 */}
+                <div className="text-moss-white/40 whitespace-nowrap">
+                  {categoryNames[log.category]}
+                </div>
+              </motion.div>
+            );
+          })
         )}
 
         {filteredLogs.length === 0 && !loading && (
-          <div className="flex flex-col items-center justify-center h-32 text-moss-white/40">
-            <Terminal className="w-12 h-12 mb-2" />
-            <p>暂无日志记录</p>
-          </div>
+          <EmptyState icon={Terminal} message="暂无日志记录" className="h-32" />
         )}
       </div>
 
       {/* 统计 */}
       <div className="mt-4 pt-4 border-t border-moss-cyan/20 flex items-center gap-4 text-xs">
         <span className="text-moss-white/60">
-          共 <span className="text-moss-cyan">{logs.length}</span> 条日志
+          共 <span className="text-moss-cyan">{logs?.length ?? 0}</span> 条日志
         </span>
         <span className="text-moss-white/60">
           显示 <span className="text-moss-cyan">{filteredLogs.length}</span> 条
         </span>
-        {logs.filter((l) => l.level === 'critical').length > 0 && (
+        {(logs ?? []).filter((l) => l.level === 'critical').length > 0 && (
           <span className="text-cyber-red animate-pulse">
-            {logs.filter((l) => l.level === 'critical').length} 条关键错误
+            {(logs ?? []).filter((l) => l.level === 'critical').length} 条关键错误
           </span>
         )}
       </div>

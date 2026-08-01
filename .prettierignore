@@ -1,0 +1,28 @@
+# 依赖与构建产物
+node_modules/
+.next/
+out/
+dist/
+build/
+coverage/
+
+# 锁文件与配置
+package-lock.json
+yarn.lock
+pnpm-lock.yaml
+
+# 自动生成文件
+next-env.d.ts
+tsconfig.tsbuildinfo
+
+# 第三方 / 工具产物
+.husky/
+.github/
+.qoder/
+.trae/
+.vscode/
+
+# 文档与资源（不格式化）
+*.md
+*.mdx
+public/

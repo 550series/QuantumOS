@@ -1,8 +1,11 @@
 'use client';
 
 import React, { memo, useCallback, useEffect, useRef, useState } from 'react';
+
 import { motion } from 'framer-motion';
+
 import { useSystemStore } from '@/stores';
+
 import { appConfig, type AppType, type AppConfigEntry } from './appConfig';
 
 interface Position { x: number; y: number; }

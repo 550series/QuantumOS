@@ -1,4 +1,5 @@
 import { v4 as uuidv4 } from 'uuid';
+
 import { logDB, alertDB } from '@/lib/db';
 import type { LogEntry, Alert, LogLevel, LogCategory, AlertSeverity } from '@/types';
 

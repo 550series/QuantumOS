@@ -1,8 +1,9 @@
 import { v4 as uuidv4 } from 'uuid';
+
+import { MOSSDecisionEngine } from '@/lib/ai/decisionEngine';
 import { useSystemStore } from '@/stores';
 import { useAIStore } from '@/stores';
 import { useTaskStore } from '@/stores';
-import { MOSSDecisionEngine } from '@/lib/ai/decisionEngine';
 import type { Task } from '@/types';
 
 // 事件类型
