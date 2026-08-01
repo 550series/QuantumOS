@@ -33,14 +33,18 @@ import { MOSSDecisionEngine } from './decisionEngine';
 
 // 通过括号访问私有静态方法（运行期 JS 可见）
 const determineDecisionType = (input: DecisionInput) =>
-  (MOSSDecisionEngine as unknown as {
-    determineDecisionType: (input: DecisionInput) => string | null;
-  }).determineDecisionType(input);
+  (
+    MOSSDecisionEngine as unknown as {
+      determineDecisionType: (input: DecisionInput) => string | null;
+    }
+  ).determineDecisionType(input);
 
 const calculateConfidence = (input: DecisionInput, recommendation: Recommendation) =>
-  (MOSSDecisionEngine as unknown as {
-    calculateConfidence: (input: DecisionInput, rec: Recommendation) => number;
-  }).calculateConfidence(input, recommendation);
+  (
+    MOSSDecisionEngine as unknown as {
+      calculateConfidence: (input: DecisionInput, rec: Recommendation) => number;
+    }
+  ).calculateConfidence(input, recommendation);
 
 const baseInput: DecisionInput = {
   context: 'test',
@@ -127,6 +131,24 @@ describe('MOSSDecisionEngine - calculateConfidence（置信度计算）', () => 
     expect(calculateConfidence(input, baseRecommendation)).toBe(0.7);
   });
 
+  it('零值数据不提升置信度（cpu: 0 视为无有效信号，issue #43）', () => {
+    const input: DecisionInput = { ...baseInput, data: { cpu: 0 } };
+    expect(calculateConfidence(input, baseRecommendation)).toBe(0.5);
+  });
+
+  it('null/undefined 值不提升置信度', () => {
+    const input: DecisionInput = {
+      ...baseInput,
+      data: { cpu: null, memory: undefined },
+    };
+    expect(calculateConfidence(input, baseRecommendation)).toBe(0.5);
+  });
+
+  it('零值与有效值混合时仍提升置信度', () => {
+    const input: DecisionInput = { ...baseInput, data: { cpu: 0, memory: 50 } };
+    expect(calculateConfidence(input, baseRecommendation)).toBe(0.7);
+  });
+
   it('totalImpact > 30 再加 0.2', () => {
     const input: DecisionInput = { ...baseInput, data: { cpu: 50 } };
     const rec: Recommendation = {
@@ -142,9 +164,7 @@ describe('MOSSDecisionEngine - calculateConfidence（置信度计算）', () => 
     const rec: Recommendation = {
       ...baseRecommendation,
       impact: { ...baseRecommendation.impact, performance: 20, security: 10, stability: 5 },
-      alternatives: [
-        { action: 'alt', parameters: {}, pros: [], cons: [] },
-      ],
+      alternatives: [{ action: 'alt', parameters: {}, pros: [], cons: [] }],
     };
     // 0.5 + 0.2 + 0.2 + 0.1 = 1.0
     expect(calculateConfidence(input, rec)).toBeCloseTo(1.0, 10);

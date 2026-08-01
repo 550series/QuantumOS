@@ -44,7 +44,7 @@ export default function DesktopPage() {
       });
       setStartMenuOpen(false);
     },
-    [openWindow]
+    [openWindow],
   );
 
   const handleToggleStartMenu = useCallback(() => {
@@ -87,15 +87,13 @@ export default function DesktopPage() {
 
   return (
     <>
-      <AnimatePresence>
-        {isLocked && <LockScreen onUnlock={handleUnlock} />}
-      </AnimatePresence>
+      <AnimatePresence>{isLocked && <LockScreen onUnlock={handleUnlock} />}</AnimatePresence>
 
       <motion.div
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         transition={{ duration: 1 }}
-        className="fixed inset-0 bg-gradient-cyber-gradient overflow-hidden"
+        className="fixed inset-0 bg-cyber-gradient overflow-hidden"
         onContextMenu={handleContextMenu}
       >
         <div className="absolute inset-0 opacity-10">
@@ -126,10 +124,7 @@ export default function DesktopPage() {
         </div>
 
         {startMenuOpen && (
-          <div
-            className="fixed inset-0 z-0"
-            onClick={() => setStartMenuOpen(false)}
-          />
+          <div className="fixed inset-0 z-0" onClick={() => setStartMenuOpen(false)} />
         )}
 
         {contextMenu && (

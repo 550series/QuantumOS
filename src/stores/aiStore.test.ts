@@ -73,14 +73,22 @@ describe('useAIStore - addDecision（store reducer）', () => {
     expect(useAIStore.getState().metrics.decisionsCount).toBe(2);
   });
 
-  it('setDecisions 批量设置但不更新 decisionsCount（仅 addDecision 维护）', () => {
+  it('setDecisions 批量设置并同步更新 decisionsCount', () => {
     const decisions = [makeDecision({ id: 'd1' }), makeDecision({ id: 'd2' })];
     useAIStore.getState().setDecisions(decisions);
 
     const state = useAIStore.getState();
     expect(state.decisions).toHaveLength(2);
-    // setDecisions 不触碰 metrics，保持初始 0
-    expect(state.metrics.decisionsCount).toBe(0);
+    // setDecisions 同步更新 metrics.decisionsCount，避免 UI 指标不一致（issue #41）
+    expect(state.metrics.decisionsCount).toBe(2);
+  });
+
+  it('setDecisions 清空列表时 decisionsCount 归零', () => {
+    useAIStore.getState().addDecision(makeDecision({ id: 'd1' }));
+    expect(useAIStore.getState().metrics.decisionsCount).toBe(1);
+
+    useAIStore.getState().setDecisions([]);
+    expect(useAIStore.getState().metrics.decisionsCount).toBe(0);
   });
 });
 

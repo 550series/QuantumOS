@@ -11,7 +11,7 @@ import { SystemStatus } from './SystemStatus';
 
 // MossEye 依赖 @react-three/fiber + three（~600KB），仅在启动动画后期 showEye 时渲染。
 // 懒加载使其不进入首屏主 chunk，按需在眼睛展示前加载。
-const MossEye = dynamic(() => import('./MossEye').then(m => ({ default: m.MossEye })), {
+const MossEye = dynamic(() => import('./MossEye').then((m) => ({ default: m.MossEye })), {
   ssr: false,
   loading: () => null,
 });
@@ -33,13 +33,37 @@ const bootMessages = [
 ];
 
 const errorModules = [
-  { name: '量子计算核心 (QUANTUM_CORE)', code: 'ERR_QC_0x7F', detail: '量子态坍缩异常，无法建立稳定量子比特' },
-  { name: 'AI决策引擎 (AI_ENGINE)', code: 'ERR_AI_0x3E', detail: '神经网络权重矩阵损坏，推理管线中断' },
+  {
+    name: '量子计算核心 (QUANTUM_CORE)',
+    code: 'ERR_QC_0x7F',
+    detail: '量子态坍缩异常，无法建立稳定量子比特',
+  },
+  {
+    name: 'AI决策引擎 (AI_ENGINE)',
+    code: 'ERR_AI_0x3E',
+    detail: '神经网络权重矩阵损坏，推理管线中断',
+  },
   { name: '内存管理模块 (MEM_MGR)', code: 'ERR_MEM_0x1A', detail: '量子内存页错误，ECC校验失败' },
-  { name: '存储系统 (STORAGE)', code: 'ERR_STOR_0x5C', detail: '量子存储单元读取超时，数据完整性校验失败' },
-  { name: '网络通信模块 (NETWORK)', code: 'ERR_NET_0x2D', detail: '量子纠缠信道失谐，通信链路中断' },
-  { name: '量子处理器 (QPU)', code: 'ERR_QPU_0x4B', detail: '量子处理器核心温度异常，触发安全关机' },
-  { name: 'MOSS核心服务 (MOSS_CORE)', code: 'ERR_MOSS_0x01', detail: '核心服务初始化失败，系统完整性校验未通过' },
+  {
+    name: '存储系统 (STORAGE)',
+    code: 'ERR_STOR_0x5C',
+    detail: '量子存储单元读取超时，数据完整性校验失败',
+  },
+  {
+    name: '网络通信模块 (NETWORK)',
+    code: 'ERR_NET_0x2D',
+    detail: '量子纠缠信道失谐，通信链路中断',
+  },
+  {
+    name: '量子处理器 (QPU)',
+    code: 'ERR_QPU_0x4B',
+    detail: '量子处理器核心温度异常，触发安全关机',
+  },
+  {
+    name: 'MOSS核心服务 (MOSS_CORE)',
+    code: 'ERR_MOSS_0x01',
+    detail: '核心服务初始化失败，系统完整性校验未通过',
+  },
 ];
 
 export const BootSequence = memo(function BootSequence() {
@@ -49,7 +73,7 @@ export const BootSequence = memo(function BootSequence() {
   const [messages, setMessages] = useState<string[]>([]);
   const [showEye, setShowEye] = useState(false);
   const [bootFailed, setBootFailed] = useState(false);
-  const [errorModule, setErrorModule] = useState<typeof errorModules[number] | null>(null);
+  const [errorModule, setErrorModule] = useState<(typeof errorModules)[number] | null>(null);
   const failedRef = useRef(false);
 
   useEffect(() => {
@@ -71,14 +95,17 @@ export const BootSequence = memo(function BootSequence() {
         { time: 11500, action: () => setStage('error') },
       ];
 
-      const timeouts = timeline.map(({ time, action }) =>
-        setTimeout(action, time)
-      );
+      const timeouts = timeline.map(({ time, action }) => setTimeout(action, time));
 
       const progressInterval = setInterval(() => {
         setProgress((prev) => {
+          if (prev >= 100) return 100;
+          // 失败分支：在 78-88% 区间模拟系统卡顿，随后继续推进至 100%
+          // 让用户能通过进度条判断启动已失败结束
           const target = 78 + Math.random() * 10;
-          if (prev >= target) return target;
+          if (prev >= target) {
+            return prev + 100 / 150;
+          }
           return prev + 100 / 75;
         });
       }, 200);
@@ -99,9 +126,7 @@ export const BootSequence = memo(function BootSequence() {
       { time: 15000, action: () => router.push('/desktop') },
     ];
 
-    const timeouts = timeline.map(({ time, action }) =>
-      setTimeout(action, time)
-    );
+    const timeouts = timeline.map(({ time, action }) => setTimeout(action, time));
 
     const progressInterval = setInterval(() => {
       setProgress((prev) => {
@@ -261,9 +286,7 @@ export const BootSequence = memo(function BootSequence() {
                     ⚠
                   </motion.span>
                   <div>
-                    <div className="font-mono text-lg text-red-400">
-                      [{errorModule.code}]
-                    </div>
+                    <div className="font-mono text-lg text-red-400">[{errorModule.code}]</div>
                     <div className="font-mono text-sm text-red-300/80 mt-1">
                       故障模块: {errorModule.name}
                     </div>
@@ -271,7 +294,9 @@ export const BootSequence = memo(function BootSequence() {
                 </div>
 
                 <div className="font-mono text-xs text-red-300/60 space-y-1 pl-10">
-                  <div>{'>'} {errorModule.detail}</div>
+                  <div>
+                    {'>'} {errorModule.detail}
+                  </div>
                   <motion.div
                     initial={{ opacity: 0 }}
                     animate={{ opacity: 1 }}
@@ -307,7 +332,9 @@ export const BootSequence = memo(function BootSequence() {
                 <div className="mt-1 pl-4 border-l border-red-500/20">
                   <div>{'>>'} quantum_core::initialize() +0x7F</div>
                   <div>{'>>'} ai_engine::load_weights() +0x3E</div>
-                  <div>{'>>'} {errorModule.name.toLowerCase().replace(/\s/g, '_')}::start() +0xFF</div>
+                  <div>
+                    {'>>'} {errorModule.name.toLowerCase().replace(/\s/g, '_')}::start() +0xFF
+                  </div>
                   <div>{'>>'} moss_kernel::boot() +0x01</div>
                 </div>
               </motion.div>
@@ -323,9 +350,7 @@ export const BootSequence = memo(function BootSequence() {
           <div className="relative h-1 bg-moss-cyan/20 rounded-full overflow-hidden">
             <motion.div
               className={`absolute inset-y-0 left-0 bg-gradient-to-r ${
-                stage === 'error'
-                  ? 'from-red-500 to-red-400'
-                  : 'from-moss-cyan to-cyber-green'
+                stage === 'error' ? 'from-red-500 to-red-400' : 'from-moss-cyan to-cyber-green'
               }`}
               style={{ width: `${progress}%` }}
               transition={{ duration: 0.1 }}
@@ -337,7 +362,9 @@ export const BootSequence = memo(function BootSequence() {
             <span className={stage === 'error' ? 'text-red-400/80' : ''}>
               {stage === 'error' ? 'MOSS SYSTEM FAILURE' : 'MOSS SYSTEM INITIALIZATION'}
             </span>
-            <span className={stage === 'error' ? 'text-red-400/80' : ''}>{Math.round(progress)}%</span>
+            <span className={stage === 'error' ? 'text-red-400/80' : ''}>
+              {Math.round(progress)}%
+            </span>
           </div>
         </div>
       </div>

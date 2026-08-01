@@ -122,13 +122,19 @@ const decisionRules: Record<string, DecisionRule> = {
   },
   task_priority: {
     condition: (input: DecisionInput) => {
-      const tasks = input.data.tasks as Array<{ id: string; priority: string; status: string }> | undefined;
+      const tasks = input.data.tasks as
+        | Array<{ id: string; priority: string; status: string }>
+        | undefined;
       return tasks ? tasks.some((t) => t.priority === 'critical' && t.status === 'pending') : false;
     },
     generate: (input: DecisionInput): Recommendation => ({
       action: 'prioritize_tasks',
       parameters: {
-        taskIds: ((input.data.tasks as Array<{ id: string; priority: string; status: string }> | undefined) || [])
+        taskIds: (
+          (input.data.tasks as
+            | Array<{ id: string; priority: string; status: string }>
+            | undefined) || []
+        )
           .filter((t) => t.priority === 'critical')
           .map((t) => t.id),
       },
@@ -240,11 +246,7 @@ export async function initDefaultDecisions(): Promise<void> {
       context: '系统启动初始化',
       data: { cpu: 15, memory: 25 },
     },
-    reasoning: [
-      '系统资源充足',
-      '各项指标正常',
-      '无需进行优化操作',
-    ],
+    reasoning: ['系统资源充足', '各项指标正常', '无需进行优化操作'],
     recommendation: {
       action: 'maintain_current_state',
       parameters: {},
@@ -284,7 +286,7 @@ export async function createDecision(decision: AIDecision): Promise<void> {
 // 更新决策
 export async function updateDecision(
   id: string,
-  updates: Partial<AIDecision>
+  updates: Partial<AIDecision>,
 ): Promise<AIDecision | undefined> {
   const decision = await decisionDB.getById(id);
   if (!decision) return undefined;
@@ -339,10 +341,7 @@ export class MOSSDecisionEngine {
   }
 
   // 生成推理过程
-  private static generateReasoning(
-    input: DecisionInput,
-    recommendation: Recommendation
-  ): string[] {
+  private static generateReasoning(input: DecisionInput, recommendation: Recommendation): string[] {
     const reasoning: string[] = [];
 
     // 添加MOSS风格的开场白
@@ -351,7 +350,9 @@ export class MOSSDecisionEngine {
 
     // 添加具体分析
     reasoning.push(`分析输入数据：${JSON.stringify(input.data)}`);
-    reasoning.push(`评估影响：性能${recommendation.impact.performance > 0 ? '+' : ''}${recommendation.impact.performance}%`);
+    reasoning.push(
+      `评估影响：性能${recommendation.impact.performance > 0 ? '+' : ''}${recommendation.impact.performance}%`,
+    );
     reasoning.push(`建议操作：${recommendation.action}`);
 
     if (recommendation.alternatives.length > 0) {
@@ -362,14 +363,12 @@ export class MOSSDecisionEngine {
   }
 
   // 计算置信度
-  private static calculateConfidence(
-    input: DecisionInput,
-    recommendation: Recommendation
-  ): number {
+  private static calculateConfidence(input: DecisionInput, recommendation: Recommendation): number {
     let confidence = 0.5;
 
-    // 基于数据质量
-    if (input.data && Object.keys(input.data).length > 0) {
+    // 基于数据质量：至少存在一个有效（非空/非零）的值
+    // Object.keys 仅判断键是否存在，无法区分 { cpu: 0 } 与 { cpu: null }，故改用值校验
+    if (input.data && Object.values(input.data).some((v) => Boolean(v))) {
       confidence += 0.2;
     }
 
