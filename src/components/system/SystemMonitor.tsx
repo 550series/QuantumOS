@@ -30,14 +30,18 @@ interface SystemHistoryData {
 }
 
 export const SystemMonitor = memo(function SystemMonitor() {
-  const { status, updateStatus } = useSystemStore();
+  const { status } = useSystemStore();
   const [isMonitoring, setIsMonitoring] = useState(true);
+  // issue #40：SystemMonitor 只负责本地可视化，不再写入 systemStore.status，
+  // 避免与 useSystemStatusPolling / SimulationSystem 竞争覆盖 CPU/内存/网络字段。
+  const [metrics, setMetrics] = useState({
+    cpu: 0,
+    memory: 0,
+    upload: 0,
+    download: 0,
+  });
   const [historyData, setHistoryData] = useState<SystemHistoryData[]>([]);
   const canvasRef = useRef<HTMLCanvasElement>(null);
-
-  // 用 ref 持有最新 status，避免将其放入 effect 依赖导致 interval 反复重建
-  const statusRef = useRef(status);
-  statusRef.current = status;
 
   // 生成模拟系统数据
   useEffect(() => {
@@ -53,25 +57,11 @@ export const SystemMonitor = memo(function SystemMonitor() {
       const memory = Math.max(0, Math.min(100, baseMemory + (Math.random() * 8 - 4)));
 
       // 生成网络数据
-      const networkDownload = 100 + Math.random() * 100;
-      const networkUpload = 50 + Math.random() * 50;
+      const download = 100 + Math.random() * 100;
+      const upload = 50 + Math.random() * 50;
 
-      const currentMemory = statusRef.current.memory;
-
-      // 更新系统状态
-      updateStatus({
-        cpu,
-        memory: {
-          ...currentMemory,
-          used: (memory / 100) * currentMemory.total,
-          free: currentMemory.total - (memory / 100) * currentMemory.total,
-          percentage: memory,
-        },
-        network: {
-          upload: networkUpload,
-          download: networkDownload,
-        },
-      });
+      // 仅更新本地可视化状态
+      setMetrics({ cpu, memory, upload, download });
 
       // 更新历史数据
       setHistoryData(prev => {
@@ -80,8 +70,8 @@ export const SystemMonitor = memo(function SystemMonitor() {
             timestamp: Date.now(),
             cpu,
             memory,
-            networkDownload,
-            networkUpload,
+            networkDownload: download,
+            networkUpload: upload,
           },
           ...prev,
         ];
@@ -93,7 +83,7 @@ export const SystemMonitor = memo(function SystemMonitor() {
     generateSystemData();
     const interval = setInterval(generateSystemData, 2000);
     return () => clearInterval(interval);
-  }, [isMonitoring, updateStatus]);
+  }, [isMonitoring]);
 
   // 绘制系统状态图表
   useEffect(() => {
@@ -208,16 +198,16 @@ export const SystemMonitor = memo(function SystemMonitor() {
                 <Cpu className="w-4 h-4 text-moss-cyan" />
                 <span className="text-xs font-mono text-moss-white">CPU</span>
               </div>
-              <span className={`text-xs font-mono ${status.cpu > 80 ? 'text-cyber-red' : status.cpu > 60 ? 'text-cyber-orange' : 'text-cyber-green'}`}>
-                {Math.round(status.cpu)}%
+              <span className={`text-xs font-mono ${metrics.cpu > 80 ? 'text-cyber-red' : metrics.cpu > 60 ? 'text-cyber-orange' : 'text-cyber-green'}`}>
+                {Math.round(metrics.cpu)}%
               </span>
             </div>
             <div className="w-full h-1 bg-dark-800 rounded-full overflow-hidden">
               <motion.div
                 initial={{ width: '0%' }}
-                animate={{ width: `${Math.min(status.cpu, 100)}%` }}
+                animate={{ width: `${Math.min(metrics.cpu, 100)}%` }}
                 transition={{ duration: 0.5 }}
-                className={`h-full ${status.cpu > 80 ? 'bg-cyber-red' : status.cpu > 60 ? 'bg-cyber-orange' : 'bg-gradient-to-r from-moss-cyan to-cyber-green'}`}
+                className={`h-full ${metrics.cpu > 80 ? 'bg-cyber-red' : metrics.cpu > 60 ? 'bg-cyber-orange' : 'bg-gradient-to-r from-moss-cyan to-cyber-green'}`}
               />
             </div>
           </div>
@@ -229,16 +219,16 @@ export const SystemMonitor = memo(function SystemMonitor() {
                 <HardDrive className="w-4 h-4 text-moss-cyan" />
                 <span className="text-xs font-mono text-moss-white">内存</span>
               </div>
-              <span className={`text-xs font-mono ${status.memory.percentage > 80 ? 'text-cyber-red' : status.memory.percentage > 60 ? 'text-cyber-orange' : 'text-cyber-green'}`}>
-                {Math.round(status.memory.percentage)}%
+              <span className={`text-xs font-mono ${metrics.memory > 80 ? 'text-cyber-red' : metrics.memory > 60 ? 'text-cyber-orange' : 'text-cyber-green'}`}>
+                {Math.round(metrics.memory)}%
               </span>
             </div>
             <div className="w-full h-1 bg-dark-800 rounded-full overflow-hidden">
               <motion.div
                 initial={{ width: '0%' }}
-                animate={{ width: `${Math.min(status.memory.percentage, 100)}%` }}
+                animate={{ width: `${Math.min(metrics.memory, 100)}%` }}
                 transition={{ duration: 0.5 }}
-                className={`h-full ${status.memory.percentage > 80 ? 'bg-cyber-red' : status.memory.percentage > 60 ? 'bg-cyber-orange' : 'bg-gradient-to-r from-moss-cyan to-cyber-green'}`}
+                className={`h-full ${metrics.memory > 80 ? 'bg-cyber-red' : metrics.memory > 60 ? 'bg-cyber-orange' : 'bg-gradient-to-r from-moss-cyan to-cyber-green'}`}
               />
             </div>
           </div>
@@ -251,7 +241,7 @@ export const SystemMonitor = memo(function SystemMonitor() {
                 <span className="text-xs font-mono text-moss-white">网络</span>
               </div>
               <span className="text-xs font-mono text-moss-cyan">
-                {Math.round(status.network.download)}KB/s
+                {Math.round(metrics.download)}KB/s
               </span>
             </div>
             <div className="grid grid-cols-2 gap-2 text-xs">
@@ -259,14 +249,14 @@ export const SystemMonitor = memo(function SystemMonitor() {
                 <TrendingUp className="w-3 h-3 text-cyber-green" />
                 <span className="text-moss-white/60">下载:</span>
                 <span className="text-cyber-green">
-                  {Math.round(status.network.download)}KB/s
+                  {Math.round(metrics.download)}KB/s
                 </span>
               </div>
               <div className="flex items-center gap-1">
                 <TrendingUp className="w-3 h-3 text-cyber-orange" />
                 <span className="text-moss-white/60">上传:</span>
                 <span className="text-cyber-orange">
-                  {Math.round(status.network.upload)}KB/s
+                  {Math.round(metrics.upload)}KB/s
                 </span>
               </div>
             </div>

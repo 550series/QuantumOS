@@ -1,19 +1,15 @@
 /**
- * @WIP 占位实现
- * 当前使用模块级空数组（decisions: AIDecision[] = []），GET 永远 404。
- * 待后续接入服务端持久层。
+ * issue #39 修复：GET 与 approve/reject 操作共享 decisionStore，与 POST 创建保持一致。
  */
 import { NextRequest, NextResponse } from 'next/server';
 
-import { AIDecision } from '@/types';
-
-const decisions: AIDecision[] = [];
+import { decisionStore } from '@/app/api/_lib/data/decisions';
 
 export async function GET(
   _request: NextRequest,
   { params }: { params: { id: string } }
 ) {
-  const decision = decisions.find((d) => d.id === params.id);
+  const decision = decisionStore.get(params.id);
 
   if (!decision) {
     return NextResponse.json({ error: 'Decision not found' }, { status: 404 });
@@ -26,9 +22,9 @@ export async function POST(
   request: NextRequest,
   { params }: { params: { id: string } }
 ) {
-  const index = decisions.findIndex((d) => d.id === params.id);
+  const existing = decisionStore.get(params.id);
 
-  if (index === -1) {
+  if (!existing) {
     return NextResponse.json({ error: 'Decision not found' }, { status: 404 });
   }
 
@@ -36,25 +32,31 @@ export async function POST(
   const action = body.action as string;
 
   if (action === 'approve') {
-    decisions[index] = {
-      ...decisions[index],
+    const updated = decisionStore.update(params.id, {
       status: 'approved',
       humanApproval: true,
       approvedBy: body.approvedBy || 'unknown',
       approvedAt: new Date(),
-    };
+    });
 
-    return NextResponse.json(decisions[index]);
+    if (!updated) {
+      return NextResponse.json({ error: 'Decision not found' }, { status: 404 });
+    }
+
+    return NextResponse.json(updated);
   }
 
   if (action === 'reject') {
-    decisions[index] = {
-      ...decisions[index],
+    const updated = decisionStore.update(params.id, {
       status: 'rejected',
       humanApproval: false,
-    };
+    });
 
-    return NextResponse.json(decisions[index]);
+    if (!updated) {
+      return NextResponse.json({ error: 'Decision not found' }, { status: 404 });
+    }
+
+    return NextResponse.json(updated);
   }
 
   return NextResponse.json({ error: 'Invalid action. Use "approve" or "reject".' }, { status: 400 });
