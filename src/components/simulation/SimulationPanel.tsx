@@ -43,6 +43,15 @@ export const SimulationPanel = memo(function SimulationPanel() {
   }>>([]);
   const { status } = useSystemStore();
 
+  // issue #42：组件卸载时停止模拟定时器，避免定时器持续运行造成内存泄漏
+  useEffect(() => {
+    return () => {
+      if (isSimulationRunning) {
+        SimulationSystem.stopSimulation();
+      }
+    };
+  }, [isSimulationRunning]);
+
   // 监听活动场景变化
   useEffect(() => {
     const checkActiveScenario = () => {

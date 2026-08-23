@@ -46,6 +46,15 @@ export const EventMonitor = memo(function EventMonitor() {
   const [isEventSystemRunning, setIsEventSystemRunning] = useState(false);
   const [selectedEvent, setSelectedEvent] = useState<SystemEvent | null>(null);
 
+  // issue #42：组件卸载时停止事件生成定时器，避免定时器持续运行造成内存泄漏
+  useEffect(() => {
+    return () => {
+      if (isEventSystemRunning) {
+        EventSystem.stopEventGeneration();
+      }
+    };
+  }, [isEventSystemRunning]);
+
   // 定期更新事件列表（无变化时跳过 setState，避免无谓重渲染）
   const prevSignatureRef = useRef<string>('');
   useEffect(() => {

@@ -110,6 +110,8 @@ export class SimulationSystem {
   private static activeScenario: SimulationScenario | null = null;
   private static simulationInterval: NodeJS.Timeout | null = null;
   private static scenarioTimeout: NodeJS.Timeout | null = null;
+  // issue #42：应用场景影响的延时定时器也应被追踪，stopSimulation 时一并清理，避免内存泄漏
+  private static scenarioApplyTimeout: NodeJS.Timeout | null = null;
 
   // 启动模拟系统
   static startSimulation() {
@@ -136,6 +138,11 @@ export class SimulationSystem {
     if (this.scenarioTimeout) {
       clearTimeout(this.scenarioTimeout);
       this.scenarioTimeout = null;
+    }
+
+    if (this.scenarioApplyTimeout) {
+      clearTimeout(this.scenarioApplyTimeout);
+      this.scenarioApplyTimeout = null;
     }
 
     this.activeScenario = null;
@@ -185,8 +192,8 @@ export class SimulationSystem {
       type: scenario.type === 'emergency' ? 'error' : scenario.type === 'warning' ? 'warning' : 'info',
     });
 
-    // 延迟后应用系统影响
-    setTimeout(() => {
+    // 延迟后应用系统影响（issue #42：追踪定时器，stopSimulation 时清理）
+    this.scenarioApplyTimeout = setTimeout(() => {
       try {
         // 更新系统状态
         systemStore.updateStatus({

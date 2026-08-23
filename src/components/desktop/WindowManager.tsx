@@ -88,8 +88,12 @@ const WindowFrame = memo(function WindowFrame({
       onClick={() => onFocus(win.id)}
     >
       <div
-        className="flex items-center justify-between px-4 py-2 border-b border-moss-cyan/20 cursor-move"
-        onMouseDown={(e) => onDragStart(win.id, position, e)}
+        className={`flex items-center justify-between px-4 py-2 border-b border-moss-cyan/20 ${win.isMaximized ? '' : 'cursor-move'}`}
+        onMouseDown={(e) => {
+          // issue #44：最大化时禁用拖拽，避免位置错乱
+          if (win.isMaximized) return;
+          onDragStart(win.id, position, e);
+        }}
       >
         <div className="flex items-center gap-2">
           <div className="text-moss-cyan">{config.icon}</div>
@@ -121,10 +125,13 @@ const WindowFrame = memo(function WindowFrame({
         <AppComponent />
       </div>
 
-      <div
-        className="absolute bottom-0 right-0 w-4 h-4 bg-moss-cyan/30 cursor-se-resize"
-        onMouseDown={(e) => onResizeStart(win.id, size, e)}
-      />
+      {/* issue #44：最大化时隐藏缩放句柄，且不响应缩放 */}
+      {!win.isMaximized && (
+        <div
+          className="absolute bottom-0 right-0 w-4 h-4 bg-moss-cyan/30 cursor-se-resize"
+          onMouseDown={(e) => onResizeStart(win.id, size, e)}
+        />
+      )}
     </motion.div>
   );
 });
