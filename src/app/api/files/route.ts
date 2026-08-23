@@ -5,18 +5,25 @@ import { NextRequest, NextResponse } from 'next/server';
 import { v4 as uuidv4 } from 'uuid';
 
 import { fileStore } from '@/app/api/_lib/data/files';
+import { parseJsonSafe, withErrorHandling, badRequest } from '@/app/api/_lib/http';
 import { FileNode } from '@/types';
 
 export async function GET() {
-  return NextResponse.json(fileStore.list());
+  return withErrorHandling(async () => NextResponse.json(fileStore.list()));
 }
 
 export async function POST(request: NextRequest) {
-  const body = await request.json();
+  const parsed = await parseJsonSafe<Partial<FileNode>>(request);
+  if (!parsed.ok) return parsed.response;
+
+  const body = parsed.body;
+  if (!body.name || typeof body.name !== 'string') {
+    return badRequest('name is required');
+  }
 
   const newFile: FileNode = {
     id: uuidv4(),
-    name: body.name || 'untitled',
+    name: body.name,
     type: body.type || 'file',
     parentId: body.parentId || null,
     content: body.content,

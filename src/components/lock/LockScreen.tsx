@@ -5,11 +5,14 @@ import React, { useState, useCallback, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { Lock, Shield, Fingerprint } from 'lucide-react';
 
+import { useTranslations } from '@/lib/i18n';
+
 interface LockScreenProps {
   onUnlock: () => void;
 }
 
 export const LockScreen: React.FC<LockScreenProps> = ({ onUnlock }) => {
+  const { t } = useTranslations();
   const [currentTime, setCurrentTime] = useState(new Date());
   const [inputFocused, setInputFocused] = useState(false);
   const [unlockAttempt, setUnlockAttempt] = useState('');
@@ -111,7 +114,7 @@ export const LockScreen: React.FC<LockScreenProps> = ({ onUnlock }) => {
             </div>
             <div className="text-center">
               <p className="font-display text-2xl text-moss-cyan tracking-widest">MOSS</p>
-              <p className="font-mono text-xs text-moss-white/40">550W 量子计算机</p>
+              <p className="font-mono text-xs text-moss-white/40">{t('lock.subtitle')}</p>
             </div>
           </div>
 
@@ -133,7 +136,7 @@ export const LockScreen: React.FC<LockScreenProps> = ({ onUnlock }) => {
               onKeyDown={handleKeyDown}
               onFocus={() => setInputFocused(true)}
               onBlur={() => setInputFocused(false)}
-              placeholder={error ? '认证失败 - 重试' : '输入解锁密码...'}
+              placeholder={error ? t('lock.retry') : t('lock.placeholder')}
               className="bg-transparent border-none outline-none text-moss-white font-mono text-sm w-48 placeholder-moss-white/20"
               autoFocus
             />
@@ -151,12 +154,12 @@ export const LockScreen: React.FC<LockScreenProps> = ({ onUnlock }) => {
               animate={{ opacity: 1, y: 0 }}
               className="font-mono text-xs text-cyber-red"
             >
-              认证失败: 无效的授权凭证
+              {t('lock.authFailed')}
             </motion.p>
           )}
 
           <p className="font-mono text-xs text-moss-white/20 mt-8">
-            按下 Enter 或点击盾牌图标解锁
+            {t('lock.hint')}
           </p>
         </motion.div>
       </div>

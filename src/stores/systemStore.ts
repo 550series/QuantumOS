@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import { persist } from 'zustand/middleware';
+import { persist, devtools } from 'zustand/middleware';
 import { immer } from 'zustand/middleware/immer';
 
 import { defaultSettings } from '@/lib/db';
@@ -52,8 +52,9 @@ interface SystemState {
 }
 
 export const useSystemStore = create<SystemState>()(
-  persist(
-    immer((set, get) => ({
+  devtools(
+    persist(
+      immer((set, get) => ({
     // 初始状态
     status: {
       uptime: 0,
@@ -207,10 +208,12 @@ export const useSystemStore = create<SystemState>()(
         state.isLocked = locked;
       }),
     })),
-    {
-      name: 'quantumos-system',
-      // 持久化用户设置与锁屏状态（issue #31：刷新后保持锁屏）
-      partialize: (state) => ({ config: state.config, isLocked: state.isLocked }),
-    }
+      {
+        name: 'quantumos-system',
+        // 持久化用户设置与锁屏状态（issue #31：刷新后保持锁屏）
+        partialize: (state) => ({ config: state.config, isLocked: state.isLocked }),
+      }
+    ),
+    { name: 'SystemStore' }
   )
 );

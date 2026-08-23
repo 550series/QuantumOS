@@ -5,10 +5,12 @@ import React, { useCallback } from 'react';
 import { Settings, Monitor, Bell, Volume2, Globe, RefreshCw, Trash2, Database } from 'lucide-react';
 
 import { Button } from '@/components/ui';
+import { useTranslations } from '@/lib/i18n';
 import { useSystemStore } from '@/stores';
 
 export const SettingsPanel: React.FC = () => {
   const { config, updateConfig } = useSystemStore();
+  const { t } = useTranslations();
 
   const handleThemeChange = useCallback(
     (theme: 'dark' | 'light') => {
@@ -25,28 +27,28 @@ export const SettingsPanel: React.FC = () => {
   );
 
   const handleClearData = useCallback(() => {
-    if (window.confirm('确认清除所有本地数据？此操作不可撤销。')) {
+    if (window.confirm(t('settings.confirmClear'))) {
       indexedDB.deleteDatabase('QuantumOS');
       window.location.reload();
     }
-  }, []);
+  }, [t]);
 
   return (
     <div className="p-4">
       <div className="flex items-center gap-2 mb-6">
         <Settings className="w-5 h-5 text-moss-cyan" />
-        <h2 className="text-xl font-mono text-moss-cyan">系统设置</h2>
+        <h2 className="text-xl font-mono text-moss-cyan">{t('settings.title')}</h2>
       </div>
 
       <div className="space-y-4">
         <div className="p-4 border border-moss-cyan/30 rounded">
           <div className="flex items-center gap-2 mb-3">
             <Monitor className="w-4 h-4 text-moss-cyan" />
-            <h3 className="font-mono text-sm text-moss-white">外观设置</h3>
+            <h3 className="font-mono text-sm text-moss-white">{t('settings.appearance')}</h3>
           </div>
           <div className="space-y-3">
             <div className="flex items-center justify-between">
-              <span className="text-xs text-moss-white/60">主题模式</span>
+              <span className="text-xs text-moss-white/60">{t('settings.themeMode')}</span>
               <div className="flex gap-1">
                 <button
                   onClick={() => handleThemeChange('dark')}
@@ -56,7 +58,7 @@ export const SettingsPanel: React.FC = () => {
                       : 'border-moss-white/20 text-moss-white/60 hover:border-moss-cyan/30'
                   }`}
                 >
-                  深色
+                  {t('settings.theme.dark')}
                 </button>
                 <button
                   onClick={() => handleThemeChange('light')}
@@ -66,13 +68,13 @@ export const SettingsPanel: React.FC = () => {
                       : 'border-moss-white/20 text-moss-white/60 hover:border-moss-cyan/30'
                   }`}
                 >
-                  浅色
+                  {t('settings.theme.light')}
                 </button>
               </div>
             </div>
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
-                <span className="text-xs text-moss-white/60">动画效果</span>
+                <span className="text-xs text-moss-white/60">{t('settings.animations')}</span>
               </div>
               <button
                 onClick={() => handleToggle('animationsEnabled')}
@@ -93,12 +95,12 @@ export const SettingsPanel: React.FC = () => {
         <div className="p-4 border border-moss-cyan/30 rounded">
           <div className="flex items-center gap-2 mb-3">
             <Bell className="w-4 h-4 text-moss-cyan" />
-            <h3 className="font-mono text-sm text-moss-white">通知设置</h3>
+            <h3 className="font-mono text-sm text-moss-white">{t('settings.notificationsTitle')}</h3>
           </div>
           <div className="space-y-3">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
-                <span className="text-xs text-moss-white/60">启用通知</span>
+                <span className="text-xs text-moss-white/60">{t('settings.enableNotifications')}</span>
               </div>
               <button
                 onClick={() => handleToggle('notificationsEnabled')}
@@ -116,7 +118,7 @@ export const SettingsPanel: React.FC = () => {
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
                 <Volume2 className="w-3 h-3 text-moss-white/60" />
-                <span className="text-xs text-moss-white/60">声音提示</span>
+                <span className="text-xs text-moss-white/60">{t('settings.sound')}</span>
               </div>
               <button
                 onClick={() => handleToggle('soundEnabled')}
@@ -137,11 +139,11 @@ export const SettingsPanel: React.FC = () => {
         <div className="p-4 border border-moss-cyan/30 rounded">
           <div className="flex items-center gap-2 mb-3">
             <Globe className="w-4 h-4 text-moss-cyan" />
-            <h3 className="font-mono text-sm text-moss-white">系统设置</h3>
+            <h3 className="font-mono text-sm text-moss-white">{t('settings.system')}</h3>
           </div>
           <div className="space-y-3">
             <div className="flex items-center justify-between">
-              <span className="text-xs text-moss-white/60">界面语言</span>
+              <span className="text-xs text-moss-white/60">{t('settings.language')}</span>
               <select
                 value={config.language}
                 onChange={(e) => updateConfig({ language: e.target.value })}
@@ -154,7 +156,7 @@ export const SettingsPanel: React.FC = () => {
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
                 <RefreshCw className="w-3 h-3 text-moss-white/60" />
-                <span className="text-xs text-moss-white/60">自动更新</span>
+                <span className="text-xs text-moss-white/60">{t('settings.autoUpdate')}</span>
               </div>
               <button
                 onClick={() => handleToggle('autoUpdate')}
@@ -175,15 +177,15 @@ export const SettingsPanel: React.FC = () => {
         <div className="p-4 border border-moss-cyan/30 rounded">
           <div className="flex items-center gap-2 mb-3">
             <Database className="w-4 h-4 text-cyber-orange" />
-            <h3 className="font-mono text-sm text-cyber-orange">数据管理</h3>
+            <h3 className="font-mono text-sm text-cyber-orange">{t('settings.dataTitle')}</h3>
           </div>
           <div className="space-y-3">
             <p className="text-xs text-moss-white/50">
-              清除所有本地存储的数据，包括任务、决策、日志、警报和设置。此操作不可撤销。
+              {t('settings.dataDesc')}
             </p>
             <Button variant="danger" size="sm" onClick={handleClearData}>
               <Trash2 className="w-3 h-3 mr-1" />
-              清除所有数据
+              {t('settings.clearData')}
             </Button>
           </div>
         </div>
@@ -191,7 +193,7 @@ export const SettingsPanel: React.FC = () => {
         <div className="p-4 border border-moss-cyan/30 rounded text-center">
           <p className="font-mono text-xs text-moss-cyan/50">MOSS OS v1.0 | QuantumOS</p>
           <p className="font-mono text-xs text-moss-white/30 mt-1">
-            量子计算机操作系统 · 550系列
+            {t('settings.footer')}
           </p>
         </div>
       </div>

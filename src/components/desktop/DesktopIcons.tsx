@@ -12,7 +12,7 @@ interface DesktopIconsProps {
 
 export const DesktopIcons = memo(function DesktopIcons({ onOpenApp }: DesktopIconsProps) {
   return (
-    <div className="absolute top-4 left-4 space-y-4">
+    <div className="hidden md:flex absolute top-4 left-4 space-y-4">
       {Object.entries(appConfig).map(([key, config]) => (
         <motion.button
           key={key}

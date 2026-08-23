@@ -96,7 +96,7 @@ export default function DesktopPage() {
         className="fixed inset-0 bg-cyber-gradient overflow-hidden"
         onContextMenu={handleContextMenu}
       >
-        <div className="absolute inset-0 opacity-10">
+        <div className="absolute inset-0" style={{ opacity: 'var(--grid-overlay-opacity, 0.1)' }}>
           <div
             className="absolute inset-0"
             style={{

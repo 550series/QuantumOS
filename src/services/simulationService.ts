@@ -112,39 +112,69 @@ export class SimulationSystem {
   private static scenarioTimeout: NodeJS.Timeout | null = null;
   // issue #42：应用场景影响的延时定时器也应被追踪，stopSimulation 时一并清理，避免内存泄漏
   private static scenarioApplyTimeout: NodeJS.Timeout | null = null;
+  // issue #57：锁屏时后台暂停
+  private static running = false;
+  private static locked = false;
+  private static unsubscribeLock: (() => void) | null = null;
 
   // 启动模拟系统
   static startSimulation() {
+    this.running = true;
+    this.watchLockState();
+    this.startTimers();
+  }
+
+  // 订阅锁屏状态：锁屏暂停，解锁后恢复（issue #57）
+  private static watchLockState() {
+    if (this.unsubscribeLock) return;
+    this.locked = useSystemStore.getState().isLocked;
+    this.unsubscribeLock = useSystemStore.subscribe((state) => {
+      const wasLocked = this.locked;
+      this.locked = state.isLocked;
+      if (wasLocked === this.locked) return;
+      if (this.locked) {
+        SimulationSystem.pauseSimulation();
+      } else if (this.running) {
+        SimulationSystem.startTimers();
+      }
+    });
+  }
+
+  // 启动内部定时器（解锁/启动时调用）
+  private static startTimers() {
     if (this.simulationInterval) {
       clearInterval(this.simulationInterval);
     }
-
-    // 每30秒检查一次是否触发新场景
     this.simulationInterval = setInterval(() => {
       this.checkAndTriggerScenario();
     }, 30000);
-
-    // 立即触发一次初始场景
     this.checkAndTriggerScenario();
   }
 
-  // 停止模拟系统
-  static stopSimulation() {
+  // 暂停模拟（清理定时器，但保留 activeScenario 以便恢复）
+  private static pauseSimulation() {
     if (this.simulationInterval) {
       clearInterval(this.simulationInterval);
       this.simulationInterval = null;
     }
-
     if (this.scenarioTimeout) {
       clearTimeout(this.scenarioTimeout);
       this.scenarioTimeout = null;
     }
-
     if (this.scenarioApplyTimeout) {
       clearTimeout(this.scenarioApplyTimeout);
       this.scenarioApplyTimeout = null;
     }
+  }
 
+  // 停止模拟系统
+  static stopSimulation() {
+    this.running = false;
+    if (this.unsubscribeLock) {
+      this.unsubscribeLock();
+      this.unsubscribeLock = null;
+    }
+    this.pauseSimulation();
     this.activeScenario = null;
   }
 

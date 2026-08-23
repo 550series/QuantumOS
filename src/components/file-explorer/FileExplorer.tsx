@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useCallback, useEffect } from 'react';
+import React, { useState, useCallback, useEffect, useMemo } from 'react';
 
 import {
   Folder,
@@ -12,6 +12,10 @@ import {
   Trash2,
   RefreshCw,
   FileText,
+  ArrowUpDown,
+  ArrowUp,
+  ArrowDown,
+  Upload,
 } from 'lucide-react';
 
 import { Button, EmptyState } from '@/components/ui';
@@ -19,12 +23,51 @@ import { useAsyncInit } from '@/hooks/useAsyncInit';
 import { fileDB, initDB, buildTree, type TreeNode } from '@/lib/db';
 import type { FileNode } from '@/types';
 
+type SortKey = 'name' | 'size' | 'modifiedAt';
+type SortOrder = 'asc' | 'desc';
+
+interface SortState {
+  key: SortKey;
+  order: SortOrder;
+}
+
+// issue #53：排序
+function compareNodes(a: TreeNode, b: TreeNode, key: SortKey): number {
+  if (a.type !== b.type) return a.type === 'folder' ? -1 : 1;
+  switch (key) {
+    case 'name':
+      return a.name.localeCompare(b.name, 'zh-CN');
+    case 'size':
+      return (a.size || 0) - (b.size || 0);
+    case 'modifiedAt':
+      return new Date(a.modifiedAt).getTime() - new Date(b.modifiedAt).getTime();
+    default:
+      return 0;
+  }
+}
+
+function sortTree(nodes: TreeNode[], key: SortKey, order: SortOrder): TreeNode[] {
+  return nodes
+    .map((n) => ({
+      ...n,
+      children: n.children ? sortTree(n.children, key, order) : n.children,
+    }))
+    .sort((a, b) => {
+      const cmp = compareNodes(a, b, key);
+      return order === 'asc' ? cmp : -cmp;
+    });
+}
+
 export const FileExplorer: React.FC = () => {
   const [tree, setTree] = useState<TreeNode[]>([]);
   const [selectedFile, setSelectedFile] = useState<TreeNode | null>(null);
   const [newItemName, setNewItemName] = useState('');
   const [showNewInput, setShowNewInput] = useState<{ parentId: string | null; type: 'file' | 'folder' } | null>(null);
   const [editingContent, setEditingContent] = useState('');
+  const [sort, setSort] = useState<SortState>({ key: 'name', order: 'asc' });
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [dragId, setDragId] = useState<string | null>(null);
+  const [dropTargetId, setDropTargetId] = useState<string | null>(null);
 
   // 初始化：useAsyncInit 收敛 initDB + getAll + buildTree，返回扁平 files 与树
   const { data, loading, refresh } = useAsyncInit<{ files: FileNode[]; tree: TreeNode[] }>(
@@ -36,7 +79,7 @@ export const FileExplorer: React.FC = () => {
     []
   );
 
-  const files = data?.files ?? [];
+  const files = useMemo(() => data?.files ?? [], [data]);
 
   // 树状态由本地维护（折叠/展开），数据刷新后同步
   useEffect(() => {
@@ -52,6 +95,9 @@ export const FileExplorer: React.FC = () => {
     }
   }, [selectedFile, files]);
 
+  // issue #53：应用排序后的树
+  const sortedTree = useMemo(() => sortTree(tree, sort.key, sort.order), [tree, sort]);
+
   const toggleExpand = useCallback((nodeId: string) => {
     const toggle = (nodes: TreeNode[]): TreeNode[] =>
       nodes.map((n) => {
@@ -66,9 +112,97 @@ export const FileExplorer: React.FC = () => {
     setTree((prev) => toggle(prev));
   }, []);
 
-  const selectFile = useCallback((node: TreeNode) => {
+  // 切换排序
+  const cycleSort = useCallback((key: SortKey) => {
+    setSort((prev) => {
+      if (prev.key === key) {
+        return { key, order: prev.order === 'asc' ? 'desc' : 'asc' };
+      }
+      return { key, order: 'asc' };
+    });
+  }, []);
+
+  const toggleSelected = useCallback((id: string) => {
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) {
+        next.delete(id);
+      } else {
+        next.add(id);
+      }
+      return next;
+    });
+  }, []);
+
+  const selectSingle = useCallback((node: TreeNode) => {
     setSelectedFile(node);
   }, []);
+
+  const handleNodeClick = useCallback(
+    (node: TreeNode, e: React.MouseEvent) => {
+      if (e.ctrlKey || e.metaKey) {
+        toggleSelected(node.id);
+        return;
+      }
+      if (e.shiftKey && selectedIds.size > 0) {
+        // 简单范围选择：把当前节点加入选中
+        setSelectedIds((prev) => {
+          const next = new Set(prev);
+          next.add(node.id);
+          return next;
+        });
+        return;
+      }
+      setSelectedIds(new Set([node.id]));
+      selectSingle(node);
+      if (node.type === 'folder') toggleExpand(node.id);
+    },
+    [selectedIds, toggleSelected, selectSingle, toggleExpand]
+  );
+
+  // issue #53：收集某个节点的所有后代 id，避免把文件夹拖入自身子树
+  const getDescendantIds = useCallback(
+    (id: string): Set<string> => {
+      const result = new Set<string>();
+      const walk = (parentId: string) => {
+        for (const f of files) {
+          if (f.parentId === parentId && !result.has(f.id)) {
+            result.add(f.id);
+            walk(f.id);
+          }
+        }
+      };
+      walk(id);
+      return result;
+    },
+    [files]
+  );
+
+  // issue #53：拖拽移动（把拖拽节点挂到目标文件夹下）
+  const handleDrop = useCallback(
+    async (targetFolderId: string, e: React.DragEvent) => {
+      e.preventDefault();
+      e.stopPropagation();
+      setDropTargetId(null);
+      const draggedId = dragId;
+      setDragId(null);
+      if (!draggedId || draggedId === targetFolderId) return;
+
+      const dragged = files.find((f) => f.id === draggedId);
+      if (!dragged) return;
+
+      const descendants = getDescendantIds(draggedId);
+      if (descendants.has(targetFolderId)) return;
+
+      try {
+        await fileDB.put({ ...dragged, parentId: targetFolderId, modifiedAt: new Date() });
+        refresh();
+      } catch (err) {
+        console.error('Failed to move:', err);
+      }
+    },
+    [dragId, files, getDescendantIds, refresh]
+  );
 
   const handleCreate = useCallback(
     async (parentId: string | null, type: 'file' | 'folder') => {
@@ -108,6 +242,12 @@ export const FileExplorer: React.FC = () => {
       try {
         await deleteRecursive(nodeId);
         if (selectedFile?.id === nodeId) setSelectedFile(null);
+        setSelectedIds((prev) => {
+          if (!prev.has(nodeId)) return prev;
+          const next = new Set(prev);
+          next.delete(nodeId);
+          return next;
+        });
         refresh();
       } catch (err) {
         console.error('Failed to delete:', err);
@@ -115,6 +255,32 @@ export const FileExplorer: React.FC = () => {
     },
     [files, selectedFile, refresh]
   );
+
+  // issue #53：批量删除选中项
+  const handleBatchDelete = useCallback(async () => {
+    const ids = Array.from(selectedIds);
+    if (ids.length === 0) return;
+    if (!window.confirm(`确认删除选中的 ${ids.length} 个项目？`)) return;
+    try {
+      for (const id of ids) {
+        await (async () => {
+          const deleteRecursive = async (targetId: string) => {
+            const children = files.filter((f) => f.parentId === targetId);
+            for (const child of children) {
+              await deleteRecursive(child.id);
+            }
+            await fileDB.delete(targetId);
+          };
+          await deleteRecursive(id);
+        })();
+      }
+      setSelectedIds(new Set());
+      setSelectedFile(null);
+      refresh();
+    } catch (err) {
+      console.error('Failed to batch delete:', err);
+    }
+  }, [selectedIds, files, refresh]);
 
   const handleSaveContent = useCallback(async () => {
     if (!selectedFile || selectedFile.type !== 'file') return;
@@ -137,20 +303,44 @@ export const FileExplorer: React.FC = () => {
 
   const renderTreeNode = (node: TreeNode): React.ReactNode => {
     const isFolder = node.type === 'folder';
-    const isSelected = selectedFile?.id === node.id;
+    const isSelected = selectedFile?.id === node.id || selectedIds.has(node.id);
     const isExpanded = node.expanded;
 
     return (
       <div key={node.id}>
         <div
+          draggable
+          onDragStart={(e) => {
+            setDragId(node.id);
+            e.dataTransfer.setData('text/plain', node.id);
+            e.dataTransfer.effectAllowed = 'move';
+          }}
+          onDragEnd={() => {
+            setDragId(null);
+            setDropTargetId(null);
+          }}
+          onDragOver={(e) => {
+            if (isFolder) {
+              e.preventDefault();
+              e.dataTransfer.dropEffect = 'move';
+              if (dropTargetId !== node.id) setDropTargetId(node.id);
+            }
+          }}
+          onDragLeave={() => {
+            if (dropTargetId === node.id) setDropTargetId(null);
+          }}
+          onDrop={
+            isFolder
+              ? (e) => {
+                  handleDrop(node.id, e);
+                }
+              : undefined
+          }
           className={`flex items-center gap-1 py-1 px-1 cursor-pointer hover:bg-moss-cyan/10 rounded transition-all ${
             isSelected ? 'bg-moss-cyan/20 border border-moss-cyan/30' : ''
-          }`}
+          } ${isFolder && dropTargetId === node.id ? 'bg-moss-cyan/30 ring-1 ring-moss-cyan' : ''}`}
           style={{ paddingLeft: `${node.level * 16 + 4}px` }}
-          onClick={() => {
-            if (isFolder) toggleExpand(node.id);
-            selectFile(node);
-          }}
+          onClick={(e) => handleNodeClick(node, e)}
         >
           {isFolder ? (
             <>
@@ -199,6 +389,41 @@ export const FileExplorer: React.FC = () => {
           </Button>
         </div>
 
+        {/* issue #53：排序工具栏 */}
+        <div className="p-1 border-b border-moss-cyan/20 flex items-center gap-1">
+          <ArrowUpDown className="w-3 h-3 text-moss-white/40 flex-shrink-0" />
+          {(['name', 'size', 'modifiedAt'] as SortKey[]).map((key) => (
+            <button
+              key={key}
+              onClick={() => cycleSort(key)}
+              className={`px-1.5 py-0.5 font-mono text-[10px] border rounded flex items-center gap-0.5 transition-all ${
+                sort.key === key
+                  ? 'border-moss-cyan text-moss-cyan bg-moss-cyan/10'
+                  : 'border-moss-white/20 text-moss-white/50 hover:border-moss-cyan/30'
+              }`}
+            >
+              {key === 'name' ? '名称' : key === 'size' ? '大小' : '修改'}
+              {sort.key === key ? (
+                sort.order === 'asc' ? (
+                  <ArrowUp className="w-2 h-2" />
+                ) : (
+                  <ArrowDown className="w-2 h-2" />
+                )
+              ) : null}
+            </button>
+          ))}
+        </div>
+
+        {/* issue #53：批量操作栏 */}
+        {selectedIds.size > 1 && (
+          <div className="p-1 border-b border-moss-cyan/20 flex items-center gap-2 bg-cyber-red/5">
+            <span className="font-mono text-[10px] text-moss-white/70 flex-1">已选 {selectedIds.size} 项</span>
+            <Button variant="danger" size="sm" onClick={handleBatchDelete}>
+              <Trash2 className="w-3 h-3" />
+            </Button>
+          </div>
+        )}
+
         {showNewInput && (
           <div className="p-2 border-b border-moss-cyan/20 flex items-center gap-1">
             <input
@@ -221,10 +446,10 @@ export const FileExplorer: React.FC = () => {
             <div className="flex items-center justify-center py-8 text-moss-white/40 text-xs font-mono">
               加载中...
             </div>
-          ) : tree.length === 0 ? (
+          ) : sortedTree.length === 0 ? (
             <EmptyState icon={Folder} message="暂无文件" className="py-8" iconClassName="w-8 h-8" />
           ) : (
-            tree.map(renderTreeNode)
+            sortedTree.map(renderTreeNode)
           )}
         </div>
       </div>
@@ -270,6 +495,11 @@ export const FileExplorer: React.FC = () => {
                   <p className="font-mono text-xs mt-1">
                     {files.filter((f) => f.parentId === selectedFile.id).length} 个项目
                   </p>
+                  {/* issue #53：文件夹可作为拖拽目标 */}
+                  <div className="mt-6 flex items-center gap-2 text-xs text-moss-white/40">
+                    <Upload className="w-4 h-4" />
+                    可将文件拖拽到此文件夹移动
+                  </div>
                 </div>
               )}
             </div>
@@ -279,6 +509,9 @@ export const FileExplorer: React.FC = () => {
             <div className="text-center">
               <FolderOpen className="w-16 h-16 mx-auto mb-3 opacity-20" />
               <p className="font-mono text-sm">选择一个文件查看</p>
+              <p className="font-mono text-xs mt-2 text-moss-white/30">
+                Ctrl/Shift + 点击多选 · 拖拽文件到文件夹可移动 · 支持排序
+              </p>
             </div>
           </div>
         )}

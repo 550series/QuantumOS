@@ -117,28 +117,61 @@ const eventTemplates: Array<{
 export class EventSystem {
   private static events: SystemEvent[] = [];
   private static eventInterval: NodeJS.Timeout | null = null;
+  // issue #57：锁屏时后台暂停
+  private static running = false;
+  private static locked = false;
+  private static unsubscribeLock: (() => void) | null = null;
 
   // 启动事件系统
   static startEventGeneration() {
+    this.running = true;
+    this.watchLockState();
+    this.startTimers();
+  }
+
+  // 订阅锁屏状态：锁屏暂停，解锁后恢复（issue #57）
+  private static watchLockState() {
+    if (this.unsubscribeLock) return;
+    this.locked = useSystemStore.getState().isLocked;
+    this.unsubscribeLock = useSystemStore.subscribe((state) => {
+      const wasLocked = this.locked;
+      this.locked = state.isLocked;
+      if (wasLocked === this.locked) return;
+      if (this.locked) {
+        EventSystem.pauseEventGeneration();
+      } else if (this.running) {
+        EventSystem.startTimers();
+      }
+    });
+  }
+
+  // 启动内部定时器（解锁/启动时调用）
+  private static startTimers() {
     if (this.eventInterval) {
       clearInterval(this.eventInterval);
     }
-
-    // 每15秒生成一次事件
     this.eventInterval = setInterval(() => {
       this.generateRandomEvent();
     }, 15000);
-
-    // 立即生成一个初始事件
     this.generateRandomEvent();
   }
 
-  // 停止事件系统
-  static stopEventGeneration() {
+  // 暂停事件生成（清理定时器，状态由 running 区分）
+  private static pauseEventGeneration() {
     if (this.eventInterval) {
       clearInterval(this.eventInterval);
       this.eventInterval = null;
     }
+  }
+
+  // 停止事件系统
+  static stopEventGeneration() {
+    this.running = false;
+    if (this.unsubscribeLock) {
+      this.unsubscribeLock();
+      this.unsubscribeLock = null;
+    }
+    this.pauseEventGeneration();
   }
 
   // 生成随机事件

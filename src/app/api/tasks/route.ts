@@ -6,24 +6,32 @@ import { NextRequest, NextResponse } from 'next/server';
 import { v4 as uuidv4 } from 'uuid';
 
 import { taskStore } from '@/app/api/_lib/data/tasks';
+import { parseJsonSafe, withErrorHandling, badRequest } from '@/app/api/_lib/http';
 import { Task } from '@/types';
 
 export async function GET() {
-  return NextResponse.json(taskStore.list());
+  return withErrorHandling(async () => NextResponse.json(taskStore.list()));
 }
 
 export async function POST(request: NextRequest) {
-  const body = await request.json();
+  const parsed = await parseJsonSafe<Partial<Task>>(request);
+  if (!parsed.ok) return parsed.response;
+
+  const body = parsed.body;
   const now = new Date();
+
+  if (!body.name || typeof body.name !== 'string') {
+    return badRequest('name is required');
+  }
 
   const newTask: Task = {
     id: uuidv4(),
-    name: body.name || '未命名任务',
+    name: body.name,
     description: body.description,
     status: 'pending',
     priority: body.priority || 'normal',
     progress: 0,
-    dependencies: body.dependencies || [],
+    dependencies: Array.isArray(body.dependencies) ? body.dependencies : [],
     scheduledAt: body.scheduledAt ? new Date(body.scheduledAt) : null,
     startedAt: null,
     completedAt: null,

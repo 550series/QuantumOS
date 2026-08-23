@@ -12,6 +12,8 @@ import {
   HardDrive,
   Wifi,
   Activity,
+  Link2,
+  Hourglass,
 } from 'lucide-react';
 
 import { Panel, Button, EmptyState, SelectableCard } from '@/components/ui';
@@ -29,7 +31,7 @@ import {
   cancelTask,
   initDefaultTasks,
 } from '@/services/taskService';
-import { useTaskStore } from '@/stores';
+import { useTaskStore, useSystemStore } from '@/stores';
 import type { Task } from '@/types';
 
 
@@ -84,12 +86,6 @@ export const TaskScheduler = memo(function TaskScheduler() {
     useTaskStore.getState().addTask(task);
   };
 
-  // 启动任务：基于返回值直接更新 store，避免二次查询
-  const handleStartTask = async (id: string) => {
-    const updated = await startTask(id);
-    if (updated) updateTask(id, updated);
-  };
-
   // 取消任务：基于返回值直接更新 store，避免二次查询
   const handleCancelTask = async (id: string) => {
     const updated = await cancelTask(id);
@@ -100,6 +96,30 @@ export const TaskScheduler = memo(function TaskScheduler() {
   const handleDeleteTask = async (id: string) => {
     await deleteTask(id);
     deleteTaskFromStore(id);
+  };
+
+  // issue #49：依赖辅助函数
+  const taskById = (id: string) => tasks.find((t) => t.id === id);
+  const isDependencySatisfied = (task: Task) =>
+    task.dependencies.every((depId) => {
+      const dep = taskById(depId);
+      return !dep || dep.status === 'completed';
+    });
+  const selectedTask = selectedTaskId ? taskById(selectedTaskId) : undefined;
+
+  // issue #49：依赖未满足时禁止启动
+  const handleStartTask = async (id: string) => {
+    const task = taskById(id);
+    if (task && !isDependencySatisfied(task)) {
+      useSystemStore.getState().addNotification({
+        title: '依赖未满足',
+        message: '任务的前置依赖尚未全部完成，无法启动。',
+        type: 'warning',
+      });
+      return;
+    }
+    const updated = await startTask(id);
+    if (updated) updateTask(id, updated);
   };
 
   return (
@@ -168,7 +188,7 @@ export const TaskScheduler = memo(function TaskScheduler() {
                     </span>
                   </div>
                   <div className="flex items-center gap-1">
-                    {task.status === 'pending' && (
+                    {task.status === 'pending' && isDependencySatisfied(task) && (
                       <Button
                         variant="ghost"
                         size="sm"
@@ -179,6 +199,15 @@ export const TaskScheduler = memo(function TaskScheduler() {
                       >
                         <Play className="w-3 h-3" />
                       </Button>
+                    )}
+                    {task.status === 'pending' && !isDependencySatisfied(task) && (
+                      <span
+                        title="等待依赖完成"
+                        className="flex items-center gap-1 px-2 py-1 font-mono text-xs border border-cyber-orange/50 text-cyber-orange rounded"
+                      >
+                        <Hourglass className="w-3 h-3" />
+                        等待依赖
+                      </span>
                     )}
                     {task.status === 'running' && (
                       <Button
@@ -253,6 +282,71 @@ export const TaskScheduler = memo(function TaskScheduler() {
           <EmptyState icon={Activity} message="暂无任务" className="h-32" />
         )}
       </div>
+
+      {/* issue #49：任务依赖关系面板 */}
+      {selectedTask && (
+        <div className="mt-4 p-4 border border-moss-cyan/30 rounded bg-moss-cyan/5">
+          <div className="flex items-center gap-2 mb-3">
+            <Link2 className="w-4 h-4 text-moss-cyan" />
+            <h4 className="font-mono text-sm text-moss-white">依赖关系 · {selectedTask.name}</h4>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {/* 前置依赖：当前任务依赖谁 */}
+            <div>
+              <div className="text-xs text-moss-white/50 mb-2">被依赖（前置依赖）</div>
+              {selectedTask.dependencies.length === 0 ? (
+                <div className="text-xs text-moss-white/30">无前置依赖</div>
+              ) : (
+                <ul className="space-y-1">
+                  {selectedTask.dependencies.map((depId) => {
+                    const dep = taskById(depId);
+                    return (
+                      <li
+                        key={depId}
+                        className="flex items-center justify-between gap-2 text-xs px-2 py-1 border border-moss-white/10 rounded"
+                      >
+                        <span className="truncate text-moss-white/80">{dep ? dep.name : `未找到 (${depId})`}</span>
+                        <span
+                          className={`flex-shrink-0 px-1.5 rounded ${
+                            !dep || dep.status === 'completed'
+                              ? 'text-cyber-green bg-cyber-green/10'
+                              : 'text-cyber-orange bg-cyber-orange/10'
+                          }`}
+                        >
+                          {dep ? dep.status : '缺失'}
+                        </span>
+                      </li>
+                    );
+                  })}
+                </ul>
+              )}
+            </div>
+
+            {/* 阻塞链：谁依赖当前任务 */}
+            <div>
+              <div className="text-xs text-moss-white/50 mb-2">被阻塞（后续依赖）</div>
+              {(() => {
+                const dependents = tasks.filter((t) => t.dependencies.includes(selectedTask.id));
+                if (dependents.length === 0) return <div className="text-xs text-moss-white/30">无后续依赖</div>;
+                return (
+                  <ul className="space-y-1">
+                    {dependents.map((t) => (
+                      <li
+                        key={t.id}
+                        className="flex items-center justify-between gap-2 text-xs px-2 py-1 border border-moss-white/10 rounded"
+                      >
+                        <span className="truncate text-moss-white/80">{t.name}</span>
+                        <span className="flex-shrink-0 text-moss-white/40">{t.status}</span>
+                      </li>
+                    ))}
+                  </ul>
+                );
+              })()}
+            </div>
+          </div>
+        </div>
+      )}
     </Panel>
   );
 });

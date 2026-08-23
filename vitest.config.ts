@@ -17,11 +17,13 @@ export default defineConfig({
       provider: 'v8',
       reporter: ['text', 'lcov'],
       include: [
-        'src/lib/ai/decisionEngine.ts',
-        'src/lib/db/buildTree.ts',
-        'src/services/taskService.ts',
-        'src/stores/aiStore.ts',
-        'src/stores/taskStore.ts',
+        'src/lib/**/*.{ts,tsx}',
+        'src/services/**/*.{ts,tsx}',
+        'src/stores/**/*.{ts,tsx}',
+      ],
+      exclude: [
+        'src/**/*.{test,spec}.{ts,tsx}',
+        'src/lib/db/**',
       ],
     },
   },
