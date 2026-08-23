@@ -4,6 +4,8 @@ import React, { memo } from 'react';
 
 import { motion } from 'framer-motion';
 
+import { useTranslations } from '@/lib/i18n';
+
 import { appConfig, type AppType } from './appConfig';
 
 interface StartMenuProps {
@@ -17,6 +19,7 @@ interface StartMenuProps {
  * 仅负责菜单的渲染与点击触发应用打开；开关状态由父组件控制。
  */
 export const StartMenu = memo(function StartMenu({ open, onOpenApp }: StartMenuProps) {
+  const { t } = useTranslations();
   if (!open) return null;
 
   return (
@@ -25,7 +28,7 @@ export const StartMenu = memo(function StartMenu({ open, onOpenApp }: StartMenuP
       animate={{ opacity: 1, y: 0 }}
       className="absolute bottom-full left-0 mb-2 glass-panel p-4 min-w-64"
     >
-      <h3 className="font-mono text-xs text-moss-cyan mb-3">应用</h3>
+      <h3 className="font-mono text-xs text-moss-cyan mb-3">{t('startMenu.title')}</h3>
       <div className="space-y-1">
         {Object.entries(appConfig).map(([key, config]) => (
           <button

@@ -1,4 +1,5 @@
 import { create } from 'zustand';
+import { devtools } from 'zustand/middleware';
 import { immer } from 'zustand/middleware/immer';
 
 import type { AIDecision, AIMetrics, MOSSMessage } from '@/types';
@@ -41,7 +42,8 @@ interface AIState {
 }
 
 export const useAIStore = create<AIState>()(
-  immer((set) => ({
+  devtools(
+    immer((set) => ({
     // 初始状态
     decisions: [],
     selectedDecisionId: null,
@@ -129,4 +131,6 @@ export const useAIStore = create<AIState>()(
         state.error = error;
       }),
   })),
+    { name: 'AIStore' }
+  )
 );

@@ -1,4 +1,5 @@
 import { create } from 'zustand';
+import { devtools } from 'zustand/middleware';
 import { immer } from 'zustand/middleware/immer';
 
 import type { Task, TaskFilter, TaskSort, TaskStats } from '@/types';
@@ -26,7 +27,8 @@ interface TaskState {
 type TaskStateDraft = TaskState & { stats: TaskStats };
 
 export const useTaskStore = create<TaskState>()(
-  immer((set, get) => ({
+  devtools(
+    immer((set, get) => ({
     // 初始状态
     tasks: [],
     selectedTaskId: null,
@@ -107,7 +109,9 @@ export const useTaskStore = create<TaskState>()(
       set((state) => {
         state.error = error;
       }),
-  }))
+  })),
+    { name: 'TaskStore' }
+  )
 );
 
 function updateStatsInternal(state: TaskStateDraft) {

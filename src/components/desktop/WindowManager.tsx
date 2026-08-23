@@ -39,6 +39,7 @@ interface WindowFrameProps {
   win: import('@/types').Window;
   config: AppConfigEntry;
   isActive: boolean;
+  isMobile: boolean;
   livePosition?: Position | null;
   liveSize?: Size | null;
   onFocus: (id: string) => void;
@@ -57,6 +58,7 @@ const WindowFrame = memo(function WindowFrame({
   isActive,
   livePosition,
   liveSize,
+  isMobile,
   onFocus,
   onMinimize,
   onMaximize,
@@ -69,13 +71,22 @@ const WindowFrame = memo(function WindowFrame({
   const position = livePosition ?? win.position;
   const size = liveSize ?? win.size;
 
-  const windowStyle = {
-    left: win.isMaximized ? 0 : position.x,
-    top: win.isMaximized ? 0 : position.y,
-    width: win.isMaximized ? (typeof window !== 'undefined' ? window.innerWidth : 1000) : size.width,
-    height: win.isMaximized ? (typeof window !== 'undefined' ? window.innerHeight - 56 : 700) : size.height,
-    zIndex: win.zIndex,
-  };
+  // issue #46：小屏幕下窗口默认全屏占据视口（不含任务栏高度），避免超出屏幕
+  const windowStyle = isMobile
+    ? {
+        left: 0,
+        top: 0,
+        width: '100%' as const,
+        height: '100%' as const,
+        zIndex: win.zIndex,
+      }
+    : {
+        left: win.isMaximized ? 0 : position.x,
+        top: win.isMaximized ? 0 : position.y,
+        width: win.isMaximized ? (typeof window !== 'undefined' ? window.innerWidth : 1000) : size.width,
+        height: win.isMaximized ? (typeof window !== 'undefined' ? window.innerHeight - 56 : 700) : size.height,
+        zIndex: win.zIndex,
+      };
 
   return (
     <motion.div
@@ -90,8 +101,8 @@ const WindowFrame = memo(function WindowFrame({
       <div
         className={`flex items-center justify-between px-4 py-2 border-b border-moss-cyan/20 ${win.isMaximized ? '' : 'cursor-move'}`}
         onMouseDown={(e) => {
-          // issue #44：最大化时禁用拖拽，避免位置错乱
-          if (win.isMaximized) return;
+          // issue #44：最大化时禁用拖拽；issue #46：移动端全屏窗口不响应拖拽
+          if (win.isMaximized || isMobile) return;
           onDragStart(win.id, position, e);
         }}
       >
@@ -125,8 +136,8 @@ const WindowFrame = memo(function WindowFrame({
         <AppComponent />
       </div>
 
-      {/* issue #44：最大化时隐藏缩放句柄，且不响应缩放 */}
-      {!win.isMaximized && (
+      {/* issue #44：最大化时隐藏缩放句柄；issue #46：移动端全屏窗口不显示缩放句柄 */}
+      {!win.isMaximized && !isMobile && (
         <div
           className="absolute bottom-0 right-0 w-4 h-4 bg-moss-cyan/30 cursor-se-resize"
           onMouseDown={(e) => onResizeStart(win.id, size, e)}
@@ -139,6 +150,16 @@ const WindowFrame = memo(function WindowFrame({
 export const WindowManager: React.FC = () => {
   const { windows, activeWindowId, focusWindow, minimizeWindow, maximizeWindow, closeWindow, updateWindowPosition, updateWindowSize } =
     useSystemStore();
+
+  // issue #46：小屏幕（< 768px）检测，用于移动端全屏窗口布局
+  const [isMobile, setIsMobile] = useState(false);
+  useEffect(() => {
+    const mq = window.matchMedia('(max-width: 767px)');
+    const update = () => setIsMobile(mq.matches);
+    update();
+    mq.addEventListener('change', update);
+    return () => mq.removeEventListener('change', update);
+  }, []);
 
   // 拖拽/缩放期间仅更新本地状态，mouseup 时一次性 commit 到 store，
   // 避免 mousemove 每帧写 store 触发所有订阅者（Taskbar/SystemMonitor 等）重渲染。
@@ -238,6 +259,7 @@ export const WindowManager: React.FC = () => {
             win={win}
             config={config}
             isActive={isActive}
+            isMobile={isMobile}
             livePosition={livePosition}
             liveSize={liveSize}
             onFocus={focusWindow}

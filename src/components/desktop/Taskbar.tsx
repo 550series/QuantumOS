@@ -21,7 +21,7 @@ export const Taskbar = memo(function Taskbar({ currentTime, startMenuOpen, onTog
   const { windows, activeWindowId, focusWindow, status } = useSystemStore();
 
   return (
-    <div className="h-14 bg-dark-900/80 backdrop-blur-md border-t border-moss-cyan/30 flex items-center justify-between px-6">
+    <div className="h-12 md:h-14 bg-dark-900/80 backdrop-blur-md border-t border-moss-cyan/30 flex items-center justify-between px-3 md:px-6">
       <div className="relative">
         <Button
           variant="primary"
@@ -35,7 +35,7 @@ export const Taskbar = memo(function Taskbar({ currentTime, startMenuOpen, onTog
         <StartMenu open={startMenuOpen} onOpenApp={onOpenApp} />
       </div>
 
-      <div className="flex items-center gap-2 flex-1 justify-center">
+      <div className="flex items-center gap-2 flex-1 justify-center overflow-x-auto px-2">
         {windows.map((win) => {
           const config = appConfig[win.type as AppType];
           if (!config) return null;
@@ -44,7 +44,7 @@ export const Taskbar = memo(function Taskbar({ currentTime, startMenuOpen, onTog
             <button
               key={win.id}
               onClick={() => focusWindow(win.id)}
-              className={`px-3 py-1.5 font-mono text-xs border transition-all ${
+              className={`whitespace-nowrap px-3 py-1.5 font-mono text-xs border transition-all ${
                 activeWindowId === win.id
                   ? 'border-moss-cyan bg-moss-cyan/20 text-moss-white'
                   : 'border-moss-white/20 text-moss-white/60 hover:border-moss-cyan/30'
@@ -57,7 +57,7 @@ export const Taskbar = memo(function Taskbar({ currentTime, startMenuOpen, onTog
       </div>
 
       <div className="flex items-center gap-4">
-        <div className="flex items-center gap-3">
+        <div className="hidden md:flex items-center gap-3">
           <div className="text-moss-white/60 font-mono text-xs">
             CPU: {Math.round(status.cpu)}%
           </div>
@@ -71,7 +71,7 @@ export const Taskbar = memo(function Taskbar({ currentTime, startMenuOpen, onTog
         <div className="text-moss-white/60 font-mono text-xs" suppressHydrationWarning>
           {currentTime ? currentTime.toLocaleTimeString('zh-CN') : '--:--:--'}
         </div>
-        <div className="text-moss-white/40 font-mono text-xs" suppressHydrationWarning>
+        <div className="hidden md:block text-moss-white/40 font-mono text-xs" suppressHydrationWarning>
           {currentTime ? currentTime.toLocaleDateString('zh-CN') : '----/--/--'}
         </div>
       </div>
